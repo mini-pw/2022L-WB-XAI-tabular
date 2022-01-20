@@ -33,7 +33,7 @@
 
 ## Resources
 
-* [Explanatory Model Analysis. Explore, Explain and Examine Predictive Models)(https://ema.drwhy.ai/)
+* [Explanatory Model Analysis. Explore, Explain and Examine Predictive Models](https://ema.drwhy.ai/)
 * [Interpretable Machine Learning. A Guide for Making Black Box Models Explainable](https://christophm.github.io/interpretable-ml-book/)
 * [XAI Stories. Case studies for eXplainable Artificial Intelligence](https://pbiecek.github.io/xai_stories/)
 * [BASIC XAI with DALEX](https://medium.com/responsibleml/tagged/basic-xai)
