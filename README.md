@@ -1,6 +1,6 @@
 # User Studies - group 2022L-WB-XAI-tabular
 
-@mcavs
+[@mcavs](https://github.com/mcavs)
 
 ## Calendar and topics
 
