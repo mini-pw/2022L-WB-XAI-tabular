@@ -31,6 +31,13 @@
 * Application of good practices of using Git - 4 points.
 
 
+## Work in laboratories (homework) - 48 points
+* [Homework I  ]()   
+* [Homework II ]()
+* [Homework III]()
+* [Homework IV ]()
+* [Homework V  ]()
+
 ## Resources
 
 * [Explanatory Model Analysis. Explore, Explain and Examine Predictive Models](https://ema.drwhy.ai/)
