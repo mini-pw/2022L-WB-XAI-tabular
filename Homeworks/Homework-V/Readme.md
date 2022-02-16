@@ -1,4 +1,4 @@
-# Homework 5 (8 points)
+# Homework 5 (10 points)
 Deadline: May 13, 2021 15:00
 
 For the selected model, prepare a knitr / jupyter notebook in html or pdf format by solving the points below. Homework should be reported via Pull Request on GitHub in the Homeworks / Homework-V / Surname_Name folder.
