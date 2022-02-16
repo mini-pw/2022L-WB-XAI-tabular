@@ -25,9 +25,9 @@
 
 ## Assessment rules (total of 100 points)
 * Work in laboratories - 48 points
-* Recorded presentation in LaTeX - 16 points (evaluated by all lecturers)
+* Recorded presentation - 16 points (evaluated by all lecturers)
   * The two class group presentations with the best grades will be presented to all students.
-* Final report in LaTeX, from which the book will be created - 32 points
+* Final report - 32 points
 * Application of good practices of using Git - 4 points.
 
 
