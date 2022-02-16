@@ -1,4 +1,4 @@
-# Homework 1 (8 points)
+# Homework 1 (9 points)
 Deadline: March ,2022 23:59
 
 For the selected model, prepare a knitr/jupyter notebook in html or pdf format by solving the points below.
