@@ -1,4 +1,4 @@
-# Homework 3 (9 points)
+# Homework 3 (10 points)
 Deadline:  15:00
 
 For the selected model, prepare a knitr / jupyter notebook in html or pdf format by solving the points below. Homework should be reported via Pull Request on GitHub in the Homeworks / Homework-III / Surname_Name folder.
