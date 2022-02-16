@@ -9,16 +9,16 @@
 |  1   | 2022          | Introduction to eXplainable Artificial Intelligence              |       |
 |  2   | 2022          | Theoretical and Practical Introduction to Machine Learning       |       |
 |  3   | 2022          | Break-Down method and Shapley Values                             |       |
-|  4   | 2022          | Overview of homework 1                                           | 9 pts.|
+|  4   | 2022          | Overview of homework I                                           | 9 pts.|
 |  5   | 2022          | LIME method                                                      |       |
-|  6   | 2022          | Overview of homework 2                                           | 9 pts.|
+|  6   | 2022          | Overview of homework II                                          | 9 pts.|
 |  7   | 2022          | Ceteris Paribus Profiles                                         |       |
-|  8   | 2022          | Overview of homework 3                                           |10 pts.|
+|  8   | 2022          | Overview of homework III                                         |10 pts.|
 |  9   | 2022          | Permutational Variable Importance                                |       |
-| 10   | 2022          | Overview of homework 4                                           |10 pts.|
+| 10   | 2022          | Overview of homework IV                                          |10 pts.|
 | 11   | 2022          | Partial Dependence Profiles and Accumulated Local Effects        |       |
 | 12   | 2022          | Global Explanations                                              |       |
-| 13   | 2022          | Overview of homework 5                                           |10 pts.|
+| 13   | 2022          | Overview of homework V                                           |10 pts.|
 | 14   | 2022          | Model exploration                                                |       |
 | 15   | 2022          | Summary of the projects / consultation                           |       |
 
