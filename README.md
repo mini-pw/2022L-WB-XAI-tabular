@@ -32,11 +32,11 @@
 
 
 ## Work in laboratories (homework) - 48 points
-* [Homework I  ]()   
-* [Homework II ]()
-* [Homework III]()
-* [Homework IV ]()
-* [Homework V  ]()
+* [Homework I  ](https://github.com/mini-pw/2022L-WB-XAI-tabular/tree/main/Homeworks/Homework-I)   
+* [Homework II ](https://github.com/mini-pw/2022L-WB-XAI-tabular/tree/main/Homeworks/Homework-II)
+* [Homework III](https://github.com/mini-pw/2022L-WB-XAI-tabular/tree/main/Homeworks/Homework-III)
+* [Homework IV ](https://github.com/mini-pw/2022L-WB-XAI-tabular/tree/main/Homeworks/Homework-IV)
+* [Homework V  ](https://github.com/mini-pw/2022L-WB-XAI-tabular/tree/main/Homeworks/Homework-V)
 
 ## Resources
 
