@@ -6,21 +6,21 @@
 
 | Week | Date          | Topic                                                            | Point |
 |------|---------------|------------------------------------------------------------------|-------|
-|  1   | 2022          | Introduction to eXplainable Artificial Intelligence              |       |
-|  2   | 2022          | Theoretical and Practical Introduction to Machine Learning       |       |
-|  3   | 2022          | Break-Down method and Shapley Values                             |       |
-|  4   | 2022          | Overview of homework I                                           | 9 pts.|
-|  5   | 2022          | LIME method                                                      |       |
-|  6   | 2022          | Overview of homework II                                          | 9 pts.|
-|  7   | 2022          | Ceteris Paribus Profiles                                         |       |
-|  8   | 2022          | Overview of homework III                                         |10 pts.|
-|  9   | 2022          | Permutational Variable Importance                                |       |
-| 10   | 2022          | Overview of homework IV                                          |10 pts.|
-| 11   | 2022          | Partial Dependence Profiles and Accumulated Local Effects        |       |
-| 12   | 2022          | Global Explanations                                              |       |
-| 13   | 2022          | Overview of homework V                                           |10 pts.|
-| 14   | 2022          | Model exploration                                                |       |
-| 15   | 2022          | Summary of the projects / consultation                           |       |
+|  1   | Feb 24, 2022  | Introduction to eXplainable Artificial Intelligence              |       |
+|  2   | Mar 3, 2022   | Theoretical and Practical Introduction to Machine Learning       |       |
+|  3   | Mar 10, 2022  | Break-Down method and Shapley Values                             |       |
+|  4   | Mar 17, 2022  | Overview of homework I                                           | 9 pts.|
+|  5   | Mar 24, 2022  | LIME method                                                      |       |
+|  6   | Mar 31, 2022  | Overview of homework II                                          | 9 pts.|
+|  7   | Apr 7, 2022   | Ceteris Paribus Profiles                                         |       |
+|  8   | Apr 14, 2022  | Overview of homework III                                         |10 pts.|
+|  9   | Apr 21, 2022  | Permutational Variable Importance                                |       |
+| 10   | Apr 28, 2022  | Overview of homework IV                                          |10 pts.|
+| 11   | May 5, 2022   | Partial Dependence Profiles and Accumulated Local Effects        |       |
+| 12   | May 19, 2022  | Global Explanations                                              |       |
+| 13   | May 26, 2022  | Overview of homework V                                           |10 pts.|
+| 14   | Jun 2, 2022   | Model exploration                                                |       |
+| 15   | Jun 9, 2022   | Summary of the projects / consultation                           |       |
 
 
 ## Assessment rules (total of 100 points)
