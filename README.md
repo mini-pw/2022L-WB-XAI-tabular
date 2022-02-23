@@ -6,8 +6,8 @@
 
 | Week | Date          | Topic                                                            | Point |
 |------|---------------|------------------------------------------------------------------|-------|
-|  1   | Feb 24, 2022  | Introduction to eXplainable Artificial Intelligence              |       |
-|  2   | Mar 3, 2022   | Theoretical and Practical Introduction to Machine Learning       |       |
+|  1   | Feb 24, 2022  | Introduction to the course                                       |       |
+|  2   | Mar 3, 2022   | ML Philosophy and XAI                                            |       |
 |  3   | Mar 10, 2022  | Break-Down method and Shapley Values                             |       |
 |  4   | Mar 17, 2022  | Overview of homework I                                           | 9 pts.|
 |  5   | Mar 24, 2022  | LIME method                                                      |       |
