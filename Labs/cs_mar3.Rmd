@@ -1,0 +1,125 @@
+---
+title: "Case Studies 2022L Lab 1"
+author: "Mustafa Cavus"
+date: "Mar 3, 2022"
+output: html_document
+---
+
+## Installing the necessary packages
+
+* {DALEX} for creating explainer and calling the dataset
+* {tidyverse} for using glimpse()
+* {caret} for splitting the dataset to train and test set
+* {ranger} for traning random forest model
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+library(DALEX)
+library(tidyverse)
+library(caret)
+library(ranger)
+```
+
+## The dataset
+
+We will use the apartments dataset from {DALEX}
+
+```{r}
+data("apartments")
+head(apartments)
+```
+
+See the type of the predictors and target variable
+
+```{r}
+glimpse(apartments)
+```
+
+The type of the predictors and target variable look correct. If they are not correct do not forget to convert them to proper type!
+
+# Splitting the dataset
+
+We can use createDataPartition() from {caret} package
+```{r}
+# create the sample row index for train and test set
+index <- createDataPartition(apartments$m2.price, p = 0.8, list = FALSE)
+
+# using index split to data to train and test set
+train <- apartments[index,]
+test  <- apartments[-index,]
+```
+
+# Training a regression model
+
+To train a regression model, we can use lm() with the arguments are m2.price (target variable) and data as train.
+
+After training the model, we can see the coefficients of the model by using the summary(). Because the regression model is a kind of white-box model! 
+
+```{r}
+# train a regression model 
+lr_model <- lm(m2.price ~., data = train)
+
+# see the model summary
+summary(lr_model)
+```
+
+## Prediction in the model
+
+predict() is a generic function to get the prediction of the model and can be used with many of the model, not all. Use the model as the first argument and the set you want to calculate the model performance on.
+
+postResample() is a useful function to calculate the evaluation metrics provided by {caret} package
+
+```{r}
+pred_lr <- predict(lr_model, test)
+postResample(pred_lr, test$m2.price)
+```
+
+These results may not be meaningful on their own. We use it when comparing performances with other models.
+
+# Training a random forest model
+
+ranger() is the fast implementation of the random forest model based on C++. By using it, you can train your model quicker than the usual one.
+
+You need to put target and train set as arguments. Then calculate the predicted values of the model on test set and compare the values of evaluation metrics.
+
+```{r}
+ranger_model <- ranger(m2.price ~., data = train)
+pred_ranger <- predict(ranger_model, test)
+postResample(pred_ranger$predictions, test$m2.price)
+```
+
+As you see above, the regression model perform better than the random forest model in terms of RMSE. 
+
+# Create an explainer
+
+In DALEX, we need to create an explainer of the model first. 
+
+```{r}
+explainer_rf <- DALEX::explain(ranger_model, data = test, y = test$m2.price)
+```
+
+Then we can calculate the model performance by usind model_performance().
+
+```{r}
+mp_ranger <- DALEX::model_performance(explainer_rf)
+plot(mp_ranger)
+plot(mp_ranger, geom = "boxplot")
+
+```
+
+Let's see the importance of the variables in the model by using model_parts().
+
+```{r}
+vip_ranger <- DALEX::model_parts(explainer_rf)
+plot(vip_ranger)
+```
+
+We can see the relation between a continuous predictor and the model outcome.
+
+```{r}
+pdp_ranger <- DALEX::model_profile(explainer_rf, variable = "construction.year", type = "partial")
+plot(pdp_ranger)
+```
+
+
+
+
