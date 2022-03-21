@@ -1,6 +1,6 @@
-Problem: When managing a hotel, we want to plan the needs for staff and food well. We want to build a model predicting whether the guest will actually use the booked room.
+*Problem*: When managing a hotel, we want to plan the needs for staff and food well. We want to build a model predicting whether the guest will actually use the booked room.
 
-Data: Hotel booking demand data are available on the glasses:
+*Data*: Hotel booking demand data are available on Kaggle:
 https://www.kaggle.com/jessemostipak/hotel-booking-demand
 The data set contains 119 thousand. observations, 32 explanatory variables.
 
