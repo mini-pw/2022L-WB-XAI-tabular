@@ -1,5 +1,5 @@
 # Homework 1 (9 points)
-Deadline: March 30,2022 23:59
+Deadline: March 30, 2022 23:59
 
 For the trained model on your dataset, prepare a knitr/jupyter notebook in html or pdf format by solving the points below.
 
