@@ -5,7 +5,7 @@ For the trained model on your dataset, prepare a knitr/jupyter notebook in html 
 
 1. For the selected observation from the dataset, calculate the model prediction.
 2. For the selected observation from point 1, calculate the model prediction decomposition using Break Down.
-3. For the selected observation from point 1, calculate the model prediction decomposition using SHAP values. 
+3. For the selected observation from point 1, calculate the model prediction decomposition using SHAP values and check the interaction between the explanatory variables. 
 4. Find two observations in the dataset that have different effects (positive and negative) on the same variables.
 5. Comment on the individual results obtained in the above paragraphs.
 
