@@ -7,3 +7,5 @@ The data set contains 1338 observations and 7 explanatory variables.
 To prepare models related to the prediction of treatment costs, you should reproduce the notebook: https://www.kaggle.com/hely333/eda-regression
 
 As part of the project, you can also train your models for comparison.
+
+**Team**: Kinga, Michał, Dominik
