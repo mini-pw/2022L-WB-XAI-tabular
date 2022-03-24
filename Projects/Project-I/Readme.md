@@ -7,3 +7,5 @@ The data set contains 119K observations and 32 explanatory variables.
 To prepare the models related to the prediction of booking cancellations, please reproduce the notebook: https://www.kaggle.com/marcuswingen/eda-of-bookings-and-ml-to-predict-cancelations
 
 As part of the project, you can also train your models for comparison.
+
+**Team**: Mikołaj, Sabina, Yevhenii
