@@ -10,7 +10,7 @@
 |  2   | Mar 3, 2022   | [ML Philosophy and XAI](https://github.com/MI2-Education/2022L-WB-XAI-tabular/blob/main/Labs/cs_feb24.pdf) + [Lab 1](https://github.com/MI2-Education/2022L-WB-XAI-tabular/blob/main/Labs/cs_mar3.Rmd)                                            |       |
 |  3   | Mar 10, 2022  | [Break-Down method and Shapley Values](https://github.com/MI2-Education/2022L-WB-XAI-tabular/blob/main/Labs/cs_mar10.pdf) + [Lab 2](https://github.com/MI2-Education/2022L-WB-XAI-tabular/blob/main/Labs/cs_mar10.Rmd)                             |       |
 |  4   | Mar 17, 2022  | [Overview of homework I](https://github.com/MI2-Education/2022L-WB-XAI-tabular/tree/main/Homeworks/Homework-I)                                           | 9 pts.|
-|  5   | Mar 24, 2022  | [LIME method](https://github.com/MI2-Education/2022L-WB-XAI-tabular/blob/main/Labs/cs_feb24.pdf) + [Lab 3](https://github.com/MI2-Education/2022L-WB-XAI-tabular/blob/main/Labs/cs_mar24.Rmd)                                                  |       |
+|  5   | Mar 24, 2022  | [LIME method](https://github.com/MI2-Education/2022L-WB-XAI-tabular/blob/main/Labs/cs_mar24.pdf) + [Lab 3](https://github.com/MI2-Education/2022L-WB-XAI-tabular/blob/main/Labs/cs_mar24.Rmd)                                                  |       |
 |  6   | Mar 31, 2022  | Overview of homework II                                          | 9 pts.|
 |  7   | Apr 7, 2022   | Ceteris Paribus Profiles                                         |       |
 |  8   | Apr 14, 2022  | Overview of homework III                                         |10 pts.|
