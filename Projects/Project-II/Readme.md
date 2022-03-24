@@ -8,3 +8,5 @@ To prepare models related to the prediction of median house price, please reprod
 https://www.kaggle.com/takedown/complete-tutorial-for-beginners
 
 As part of the project, you can also train your models for comparison.
+
+**Team**: Maciej, Julia, Dawid
