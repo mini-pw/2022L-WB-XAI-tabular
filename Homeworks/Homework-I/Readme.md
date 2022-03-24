@@ -1,7 +1,7 @@
 # Homework 1 (9 points)
 Deadline: March 31, 2022 23:59
 
-For the trained model on your dataset, prepare a knitr/jupyter notebook in html or pdf format by solving the points below.
+For the trained model on your dataset ([find your group and use the dataset which is in your project task](https://github.com/MI2-Education/2022L-WB-XAI-tabular/tree/main/Projects)), prepare a knitr/jupyter notebook in html or pdf format by solving the points below.
 
 1. For the selected observation from the dataset, calculate the model prediction.
 2. For the selected observation from point 1, calculate the model prediction decomposition using Break Down.
