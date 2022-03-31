@@ -1,0 +1,103 @@
+---
+title: "PawlakDominik_HW1"
+output: pdf_document
+date: '2022-03-30'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+```{r cars}
+library(DALEX)
+library(caret)
+set.seed(2137)
+
+data <- read.csv("insurance.csv")
+head(data)
+```
+Now, let's split the data into training and test datasets.
+```{r}
+index <- createDataPartition(apartments$m2.price, p = 0.5, list = FALSE)
+
+train <- data[index,]
+test  <- data[-index,]
+
+x_train <- train[,-c(7)]
+y_train <- train[, 7]
+
+x_test <- test[,-c(7)]
+y_test <- test[, 7]
+```
+
+After splitting the data, we can train the model.
+```{r}
+library(ranger)
+
+forest <- ranger(charges~., data=train)
+y_pred <- predict(forest, x_test)
+print(y_pred$predictions[50])
+print(y_test[50])
+```
+
+Let's create explainer, then BreakDown Composition for this observation.
+```{r}
+explainer_rf <- DALEX::explain(forest, 
+                               data = x_test,  
+                               y = y_test)
+
+bd_pr <- predict_parts(explainer = explainer_rf,
+                       new_observation = x_test[50,],
+                       type = "break_down")
+bd_pr
+```
+Now let's check Shapley values
+```{r}
+shap_pr <- predict_parts(explainer = explainer_rf,
+                         new_observation = x_test[50,],
+                         type = "shap")
+shap_pr
+```
+
+Let's plot and compare both charts
+```{r}
+plot(bd_pr)
+plot(shap_pr)
+```
+
+Both plots suggest that variable smoker, with "yes" value has the biggest impact on the prediction and decreases the result. The variable "age" also decreases the prediction. Both plots suggest that 'sex' variable doesn't have big influence on the result. According to Break Down decomposition the region variable increases the prediction, whereas the according to the shapley values, this variable decreases it.
+
+Now, let's find a female who doesn't smoke and check the results for that person.
+```{r}
+observation2 <- test[(test$sex=="female" & test$smoker=="no" & test$age >= 64),]
+observation2 <- observation2[1,]
+observation2
+```
+
+Now let's repeat steps for this observation.
+```{r}
+bd_pr <- predict_parts(explainer = explainer_rf,
+                       new_observation = observation2,
+                       type = "break_down")
+bd_pr
+```
+And plot it:
+```{r}
+plot(bd_pr)
+```
+Now let's check Shapley values
+```{r}
+shap_pr <- predict_parts(explainer = explainer_rf,
+                         new_observation = observation2,
+                         type = "shap")
+shap_pr
+```
+And plot it:
+```{r}
+plot(shap_pr)
+```
+
+Conclusions:
+In the first observation, both plots present "smoker" (yes) as the most significant variable, that decreases the predicted result. On contrary, in the second observation, "age" variable turns out to be the most significant and it increases the predictions. What's more interesting and surprising the "smoker" (no) decreases the predictions. In both scenarios "children" and "sex" variables seem not to have big impact on the result. In the first case, "region" variable has also big impact, wheras in the second observation, it hardly affects the predictions.
