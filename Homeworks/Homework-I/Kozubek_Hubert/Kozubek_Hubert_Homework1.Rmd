@@ -1,0 +1,164 @@
+---
+title: "Homework I"
+author: "Kozubek Hubert"
+date: "30 03 2022"
+output: html_document
+---
+
+# Installing the necessary packages
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+#install.packages("DALEX")
+#install.packages("tidyverse")
+#install.packages("caret")
+#install.packages("ranger")
+#install.packages("dplyr")
+
+library(DALEX)
+library(tidyverse)
+library(caret)
+library(ranger)
+library(dplyr)
+```
+
+#Preparation
+
+For this project data used in it came from a "worldfootballR" package. For the simplicity of usage data was scraped and saved into "EPL_2021.csv". Inside csv file we have data about football and the goal is to classify if the Goal was scored.
+
+```{r}
+#setwd("D:\\Hubert\\Dokumenty\\Politechnika Warszawska\\IIAD\\Semestr IV\\Warsztaty Badawcze\\Prace Domowe")
+shot_location <- read.csv("EPL_2021.csv") #reading data from csv file
+head(shot_location)
+```
+
+First thing we do is to preprocess data to make it easier for later model creation
+
+```{r}
+shot_stats <- shot_location %>% filter(result != "OwnGoal") %>% # filtering own goals
+  mutate(status = ifelse(result == "Goal", "1", "0")) %>% # making problem a binary classification
+  mutate(distanceToGoal = sqrt((105 - (X * 105)) ^ 2 + (32.5 - (Y * 68)) ^ 2)) %>% # creating new feature, distance to goal
+  mutate(angleToGoal = abs(atan((7.32 * (105 - (X * 105))) / ((105 - (X * 105))^2 + (32.5 - (Y * 68)) ^ 2 - (7.32 / 2) ^ 2)) * 180 / pi)) %>% #creating new feature, angle to goal
+  mutate(status = factor(status),
+         h_a = factor(h_a),
+         situation = factor(situation),
+         shotType = factor(shotType),
+         lastAction = factor(lastAction),
+         minute = as.numeric(minute)) %>%
+  select(status, minute, h_a, situation, shotType, lastAction, distanceToGoal, angleToGoal)
+shot_stats$status->f
+as.numeric(levels(f))[f] -> n
+shot_stats$status = n
+```
+
+Splitting data into training and testing set
+
+```{r}
+set.seed(123)
+# create the sample row index for train and test set
+index <- createDataPartition(shot_stats$status, p = 0.8, list = FALSE)
+
+# using index split to data to train and test set
+train <- shot_stats[index,]
+test  <- shot_stats[-index,]
+
+```
+
+Checking aproximatly how many 1's are in dataset
+
+```{r}
+shot_stats$status->n
+sum(n)/length(n)
+```
+
+Now that we have our data prepared, we can proceed to training our model
+
+# Model evaluation
+For the model random forest was chosen
+```{r}
+set.seed(123)
+ranger_model <- ranger(status ~., data = train)
+```
+
+
+## Chosing observation
+```{r}
+obs <-  test[7,]
+```
+
+## Making prediction
+
+```{r}
+p <- predict(ranger_model, obs)
+p$predictions
+obs$status
+```
+As we can see model made quiet good prediction for this observation. Model confidence, that the observation is 0, is about 93%.
+
+# Break Down
+
+```{r}
+explainer_rf <- DALEX::explain(ranger_model, 
+                               data = test[,-1],  
+                               y = test$status,
+                               label = "random forest")
+```
+
+```{r}
+class(obs$status) = "Numeric"
+bd_pr <- predict_parts(explainer = explainer_rf,
+                       new_observation = obs,
+                       type = "break_down")
+plot(bd_pr)
+```
+
+According to the Break Down variables distance to goal and angle to goal have the biggest impact on the predicted value. Distance to goal 16.21 decrees prediction by 0,091, on the contrary angle to goal equal to 23.04 increases prediction by 0,076.
+
+# Sapley
+
+```{r}
+shap_pr <- predict_parts(explainer = explainer_rf,
+                         new_observation = obs,
+                         type = "shap")
+plot(shap_pr)
+```
+
+
+As we can see both distance to goal and angle to goal have biggest influence on the prediction. We can notice that a lot of variables can have both positive and negative influence on the prediction.
+
+# Different effects
+
+```{r}
+test %>%
+  filter(distanceToGoal < 20, angleToGoal < 10) %>% 
+  slice(1) -> obs2
+```
+
+
+
+```{r}
+p <- predict(ranger_model, obs2)
+p$predictions
+obs2$status
+```
+
+```{r}
+class(obs$status) = "Numeric"
+bd_pr <- predict_parts(explainer = explainer_rf,
+                       new_observation = obs2,
+                       type = "break_down")
+plot(bd_pr)
+```
+
+As we can see from the break down plot, variable distance to goal has a positive impact on prediction for new observation opposite to impact that the same variable had on observation 1. Same is with the varible angle to goal. This time model predicted 0 with a 94% confidence and it turned out to be wrong.
+```{r}
+shap_pr <- predict_parts(explainer = explainer_rf,
+                         new_observation = obs2,
+                         type = "shap")
+plot(shap_pr)
+```
+# Summary
+Looking at the shapely value plot for observation 1 distance to goal has biggest influence for the prediction, followed right after we have angle to goal.
+On the other hand in the second observation angle to goal have bigger influence on the prediction than the distance to goal. Also in the observation 1 angle to goal has a positive impact on the prediction while in the second observation impact is negative.
+We can also see that other variables don't have the same order in terms of impact on the prediction. 
+
+For both observations variables distance to goal and angle to goal have biggest influence. Looking at boxplots on Sapley plot we can see that even slightly changing those variables we can influence prediction the most.
