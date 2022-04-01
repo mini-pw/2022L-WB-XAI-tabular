@@ -1,0 +1,218 @@
+---
+title: "Case Studies 2022L Lab 4"
+author: "Mustafa Cavus"
+date: "Mar 31, 2022"
+output: html_document
+---
+
+## Installing the necessary packages
+
+* {DALEX} for creating explainer and calling the dataset
+* {tidyverse} for using glimpse()
+* {caret} for splitting the dataset to train and test set
+* {ranger} for traning random forest model
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+#install.packages("DALEX")
+#install.packages("tidyverse")
+#install.packages("caret")
+#install.packages("ranger")
+
+library(DALEX)
+library(tidyverse)
+library(caret)
+library(ranger)
+```
+
+## Training the model
+
+We will use the apartments dataset from {DALEX}
+
+```{r}
+data("apartments")
+head(apartments)
+```
+
+Splitting the dataset
+
+We can use createDataPartition() from {caret} package
+
+```{r}
+set.seed(123)
+# create the sample row index for train and test set
+index <- createDataPartition(apartments$m2.price, p = 0.8, list = FALSE)
+
+# using index split to data to train and test set
+train <- apartments[index,]
+test  <- apartments[-index,]
+```
+
+
+# Training a random forest model
+
+ranger() is the fast implementation of the random forest model based on C++. By using it, you can train your model quicker than the usual one.
+
+You need to put target and train set as arguments. Then calculate the predicted values of the model on test set and compare the values of evaluation metrics.
+
+```{r}
+set.seed(123)
+ranger_model <- ranger(m2.price ~., data = train)
+```
+
+
+# Create an explainer
+
+Model-objects created with different libraries may have different internal structures. Thus, first, we have got to create an “explainer,” i.e., an object that provides an uniform interface for different models. In DALEX, we need to create an explainer of the model first by using explain(). 
+
+There is only one argument that is required by the function:
+
+* 'model' is used to specify the model-object with the fitted form of the model.
+
+
+The explain() allows additional arguments that extends its functionalities.
+
+* 'data' is a data frame or matrix providing data to which the model is to be applied. Note that the data object should not, in principle, contain the dependent variable.
+
+* 'y' observed values of the dependent variable corresponding to the data given in the 'data' object.
+
+* 'predict_function' is a function that returns prediction scores.
+
+* 'residual_function' is a function that returns model residuals.
+
+* 'verbose' is a logical argument (verbose = TRUE by default) indicating whether diagnostic messages are to be printed.
+
+* 'precalculate' is a logical argument (precalculate = TRUE by default) indicating whether predicted values and residuals are to be calculated when the explainer is created. Note that this will also happen if verbose = TRUE. To skip the calculations, both verbose and precalculate should be set to FALSE.
+
+* 'model_info' is a named list (with components package, version, and type) providing information about the model; if not specified (model_info = NULL by default), DALEX seeks for information on its own.
+
+* 'type' is the information about the type of the model, either "classification" (for a binary dependent variable) or "regression" (for a continuous dependent variable); if not specified (type = NULL by default), then the value of the argument is extracted from 'model_info'.
+
+* 'label' is a unique name of the model; if not specified (label = NULL by default), then it is extracted from class(model). It is useful to seperate the explainers, especially in plots.
+
+
+```{r}
+explainer_rf <- DALEX::explain(model = ranger_model, 
+                               data = test[,-1],  
+                               y = test$m2.price,
+                               label = "random forest")
+```
+
+
+# Ceteris-Paribus Profile
+
+To compute the CP profiles, the predict_profile() function requires arguments explainer, which specifies the name of the explainer-object, and new_observation, which specifies the name of the data frame for the instance for which prediction is of interest.
+
+```{r}
+cp_pr <- predict_profile(explainer = explainer_rf,
+                         new_observation = apartments[53,])
+
+cp_pr
+```
+
+
+When you tried to print the cp_pr object, the top observation (prediction of the new observation) and top profiles are printed. If you want to see all profiles call the columns which are in the object:
+
+```{r}
+cp_pr$construction.year
+```
+
+
+To plot the CP profiles for all numeric variables, the generic plot() can be used directly:
+
+```{r}
+plot(cp_pr)
+```
+
+The name of the variables are provided in the variables argument can be used to limit the display of a variable or some of the variables:
+
+```{r}
+plot(cp_pr, variables = "surface")
+plot(cp_pr, variables = c("surface", "floor"))
+```
+
+
+To plot CP profiles for categorical variables, we have got to add the variable_type = "categorical" argument to the plot() function. In that case, we can use the categorical_type argument to specify whether we want to obtain a plot with "lines" (default) or "bars":
+
+```{r}
+plot(cp_pr, 
+     variables = c("district"), 
+     variable_type = "categorical", 
+     categorical_type = "bars") 
+```
+
+## Advanced use of the predict_profile() 
+
+### variable_splits
+
+The feature space of the variables can be changed by using the variable_splits argument:
+
+```{r}
+variable_splits = list(surface = seq(30, 100, 0.1), 
+                       construction.year = seq(2000, 2010, 0.1))
+
+cp_pr2 <- predict_profile(explainer = explainer_rf, 
+                          new_observation = apartments[53,],
+                          variable_splits = variable_splits)
+```
+
+
+Before plot the CP profiles, do not forget to limit the plot with the name of the variables used in the variable_split! 
+
+```{r}
+plot(cp_pr2, variables = c("surface", "construction.year"))
+```
+
+
+### CP profiles for more than one observation
+
+To create the CP profiles for more than one observation, we can use rbind() function in new_observation argument:
+
+```{r}
+cp_pr3 <- predict_profile(explainer = explainer_rf,
+                          new_observation = rbind(apartments[53,],
+                                                  apartments[54,]))
+```
+
+
+Do not forget use different colours before plotting the CP profiles! You can use color argument as "_ids_" in plot function to differentiate the color of the CP profile of the observations. Because the label of the observations are stored in the "_ids_" column.
+
+```{r}
+plot(cp_pr3, color = "_ids_")
+```
+
+
+There is no function to combine the CP profiles for a categorical variable in a same plot. But we can handle this with longer way by plotting them seperately:
+
+```{r}
+cp_53 <- predict_profile(explainer = explainer_rf,
+                         new_observation = apartments[53,])
+cp_54 <- predict_profile(explainer = explainer_rf,
+                         new_observation = apartments[54,])
+
+cp_plot_53 <- plot(cp_53, 
+                   variables = c("district"), 
+                   variable_type = "categorical", 
+                   categorical_type = "bars")
+
+cp_plot_54 <- plot(cp_54,
+                   variables = c("district"), 
+                   variable_type = "categorical", 
+                   categorical_type = "bars")
+```
+
+
+To combine the plots use {cowplot} package in R:
+
+```{r}
+#install.packages("cowplot")
+library(cowplot)
+
+plot_grid(cp_plot_53, cp_plot_54, labels = c('53', '54'), ncol = 1)
+```
+
+
+# Application
+
+Let's try explain a specific apartment on your own with the Ceteris-Paribus profiles.
+
+
