@@ -1,5 +1,5 @@
 # Homework 2 (9 points)
-Deadline:  23:59
+Deadline: Apr 14, 23:59
 
 For the selected model, prepare a knitr / jupyter notebook in html or pdf format by solving the points below. Homework should be reported via Pull Request on GitHub in the Homeworks / Homework-II / Surname_Name folder.
 
