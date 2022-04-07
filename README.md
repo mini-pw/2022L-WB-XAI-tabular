@@ -12,7 +12,7 @@
 |  4   | Mar 17, 2022  | [Overview of homework I](https://github.com/MI2-Education/2022L-WB-XAI-tabular/tree/main/Homeworks/Homework-I)                                           | 9 pts.|
 |  5   | Mar 24, 2022  | [LIME method](https://github.com/MI2-Education/2022L-WB-XAI-tabular/blob/main/Labs/cs_mar24.pdf) + [Lab 3](https://github.com/MI2-Education/2022L-WB-XAI-tabular/blob/main/Labs/cs_mar24.Rmd)                                                  |       |
 |  6   | Mar 31, 2022  | [Ceteris Paribus Profiles](https://github.com/MI2-Education/2022L-WB-XAI-tabular/blob/main/Labs/cs_mar31.pdf) + [Lab 4](https://github.com/MI2-Education/2022L-WB-XAI-tabular/blob/main/Labs/cs_mar31.Rmd)                                         | |
-|  7   | Apr 7, 2022   | Overview of homework II                                          | 9 pts.      |
+|  7   | Apr 7, 2022   | [Model performance measures](https://github.com/MI2-Education/2022L-WB-XAI-tabular/blob/main/Labs/cs_apr7.pdf) + [Lab 5](https://github.com/MI2-Education/2022L-WB-XAI-tabular/blob/main/Labs/cs_apr7.Rmd) + [Homework II](https://github.com/MI2-Education/2022L-WB-XAI-tabular/tree/main/Homeworks/Homework-II)                                     | 9 pts.      |
 |  8   | Apr 14, 2022  | Overview of homework III                                         |10 pts.|
 |  9   | Apr 21, 2022  | Permutational Variable Importance                                |       |
 | 10   | Apr 28, 2022  | Overview of homework IV                                          |10 pts.|
