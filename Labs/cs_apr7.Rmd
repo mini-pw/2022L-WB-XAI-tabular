@@ -1,0 +1,204 @@
+---
+title: "Case Studies 2022L Lab 5"
+author: "Mustafa Cavus"
+date: "Apr 7, 2022"
+output: html_document
+---
+
+# Installing the necessary packages
+
+* {DALEX} for creating explainer and calling the dataset
+* {tidyverse} for using glimpse()
+* {caret} for splitting the dataset to train and test set
+* {ranger} for training random forest model
+* {gbm} for training gbm model
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+#install.packages("DALEX")
+#install.packages("tidyverse")
+#install.packages("caret")
+#install.packages("ranger")
+#install.packages("gbm")
+
+library(DALEX)
+library(tidyverse)
+library(caret)
+library(ranger)
+library(gbm)
+```
+
+# Training the regression models
+
+We will use the apartments dataset from {DALEX}
+
+```{r}
+data("apartments")
+head(apartments)
+```
+
+## Splitting the dataset
+
+We can use createDataPartition() from {caret} package
+
+```{r}
+set.seed(123)
+# create the sample row index for train and test set
+index <- createDataPartition(apartments$m2.price, p = 0.8, list = FALSE)
+
+# using index split to data to train and test set
+train_reg <- apartments[index,]
+test_reg  <- apartments[-index,]
+```
+
+
+## Training a random forest model
+
+ranger() is the fast implementation of the random forest model based on C++. By using it, you can train your model quicker than the usual one.
+
+You need to put target and train set as arguments. Then calculate the predicted values of the model on test set and compare the values of evaluation metrics.
+
+```{r}
+set.seed(123)
+ranger_model <- ranger(m2.price ~., data = train_reg)
+```
+
+## Training a linear regression model
+
+Linear regression is a linear approach for modelling the relationship between a continues response and the explanatory variables. In base R function, `lm()` is used to train a linear regression model with the `model` and `data`.
+
+```{r}
+lr_model <- lm(m2.price ~., data = train_reg)
+```
+
+
+## Training a gbm model
+
+Gradient boosting is a machine learning technique used in regression and classification tasks. It gives a prediction model in the form of an ensemble of weak prediction models are decision trees, then we called the model is gradient boosted trees.
+
+If you want to learn more about the GBM, check out the package manual: https://cran.r-project.org/web/packages/gbm/gbm.pdf.
+
+```{r}
+gbm_model <- gbm(m2.price ~., data = train_reg, distribution = "gaussian")
+```
+
+## Creating explainers
+
+```{r}
+explainer_rf_reg  <- DALEX::explain(model = ranger_model, 
+                                data = test_reg[,-1],  
+                                y = test_reg$m2.price,
+                                type = "regression",
+                                label = "random forest")
+
+explainer_lr_reg  <- DALEX::explain(model = lr_model, 
+                                data = test_reg[,-1],  
+                                y = test_reg$m2.price,
+                                type = "regression",
+                                label = "Linear regression")
+
+explainer_gbm_reg <- DALEX::explain(model = gbm_model, 
+                                data = test_reg[,-1],  
+                                y = test_reg$m2.price,
+                                type = "regression",
+                                label = "gbm")
+```
+
+
+## Comparing the performance of the models
+
+```{r}
+model_performance(explainer_rf_reg)
+model_performance(explainer_lr_reg)
+model_performance(explainer_gbm_reg)
+```
+
+
+# Training the classification models
+
+We will use the `titanic_imputed` dataset from {DALEX}
+
+```{r}
+data("titanic_imputed")
+head(titanic_imputed)
+```
+
+
+## Splitting the dataset
+
+We can use `createDataPartition()` from {caret} package
+
+```{r}
+set.seed(123)
+# create the sample row index for train and test set
+index <- createDataPartition(titanic_imputed$survived, p = 0.8, list = FALSE)
+
+# using index split to data to train and test set
+train <- titanic_imputed[index,]
+test  <- titanic_imputed[-index,]
+```
+
+
+## Training a random forest model
+
+```{r}
+set.seed(123)
+ranger_model <- ranger(survived == 1 ~., data = train)
+```
+
+
+## Training a generalized linear model for classification
+
+We must to specify the `family = "binomial"` for binary classification task.  
+
+```{r}
+glm_model <- glm(survived == 1 ~., data = train, family = "binomial")
+```
+
+
+## Training a gbm model
+
+We must to specify the `distribution = "bernoulli"` for binary classification task.  
+
+```{r}
+gbm_model <- gbm(survived == 1 ~., data = train, distribution = "bernoulli")
+```
+
+## Creating explainers
+
+```{r}
+explainer_rf  <- DALEX::explain(model = ranger_model, 
+                                data = test[,-8],  
+                                y = test$survived,
+                                type = "classification",
+                                label = "random forest")
+
+explainer_glm  <- DALEX::explain(model = glm_model, 
+                                 data = test[,-8],  
+                                 y = test$survived,
+                                 type = "classification",
+                                 label = "glm")
+
+explainer_gbm <- DALEX::explain(model = gbm_model, 
+                                data = test[,-8],  
+                                y = test$survived,
+                                type = "classification",
+                                label = "gbm")
+```
+
+
+## Comparing the performance of the models
+
+```{r}
+model_performance(explainer_rf)
+
+model_performance(explainer_glm)
+
+model_performance(explainer_gbm)
+```
+
+
+# Application
+
+Let's try to train different models for your task in the projects.
+
+
