@@ -1,0 +1,70 @@
+---
+title: "Homework no. 2"
+author: "Dawid Pludowski"
+date: "April 10, 2022"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r message=FALSE, warning=FALSE}
+library(ranger)
+library(DALEX)
+library(DALEXtra)
+library(lime)
+
+set.seed(123)
+
+df <- read.csv2('./../data.csv', sep=',')
+df['median_house_value'] <- lapply(df['median_house_value'], FUN = as.integer)
+
+ranger_model <- ranger(median_house_value ~., data = df)
+```
+
+## 1. Calculating model prediction
+
+```{r}
+res <- predict(ranger_model, df[2137,])$predictions
+cat(res)
+```
+
+## 2. Calculating LIME decomposition 
+
+```{r message=FALSE}
+explainer_rf <- DALEX::explain(ranger_model, 
+                               data = df,  
+                               y = df$median_house_value,
+                               label = "random forest")
+
+model_type.dalex_explainer <- DALEXtra::model_type.dalex_explainer
+predict_model.dalex_explainer <- DALEXtra::predict_model.dalex_explainer
+
+lime_pr <- predict_surrogate(explainer = explainer_rf, 
+                             new_observation = as.data.frame(df[2137,]), 
+                             n_features = 6, 
+                             n_permutations = 1000,
+                             type = "lime")
+
+lime_pr
+plot(lime_pr)
+```
+
+`LIME` decomposition shows that `ocean_proximity` and `total_rooms` have the greatest impact on final prediction. Explanation fit is significantly low, though.
+
+## 3. Calculating LIME decomposition for different observation
+
+```{r}
+lime_pr <- predict_surrogate(explainer = explainer_rf, 
+                             new_observation = as.data.frame(df[420,]), 
+                             n_features = 6, 
+                             n_permutations = 1000,
+                             type = "lime")
+
+lime_pr
+plot(lime_pr)
+```
+As shown in previous homework, `NEAR BAY` value is supposed to have positive impact on model prediction; however, here we obtained negative impact of that value. It may be caused by the fact that in terms of `longitude` and `latitude`, houses near bay has neighbor observations only in one direction. Moreover, explanation fit is really low, which may lead to unstable explanation with that method.
+
+In both LIME decomposition number of total rooms has similar negative impact of model prediction. There is noticeable difference between impact of `longitude` in each observation, which could be explain be the fact, that little change in distance can change `NEAR BAY` to `<1H OCEAN`, while even great change of that value cannot change `INLAND` into other value. `total_rooms` and `total_bedrooms` seem to have stable impact in neighbors of both observation, maybe because that such a values are equally important independently from other attributes of house.
+
+In summary, we may expect that some attributes, such as `longitude` or `latitude` are unstable somewhat and other, like `total_rooms` might be much more stable.
