@@ -1,7 +1,7 @@
 # Homework 2 (9 points)
 Deadline: Apr 14, 23:59
 
-For the selected model, prepare a knitr / jupyter notebook in html or pdf format by solving the points below. Homework should be reported via Pull Request on GitHub in the Homeworks / Homework-II / Surname_Name folder.
+For the selected model (you may train 3 different models such as gbm, random forest, neural nets, and select the best performing one), prepare a knitr / jupyter notebook in html or pdf format by solving the points below. Homework should be reported via Pull Request on GitHub in the Homeworks / Homework-II / Surname_Name folder.
 
 1. For the selected observation from the dataset, calculate the model prediction.
 2. For the selected observation from point 1, calculate the model prediction decomposition using LIME (packages in R: live, lime, localModel, iml).
