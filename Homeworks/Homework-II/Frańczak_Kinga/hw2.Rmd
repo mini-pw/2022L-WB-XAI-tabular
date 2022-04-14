@@ -1,0 +1,232 @@
+---
+title: "Homework 2"
+author: "Kinga Frańczak"
+output: html_document
+---
+
+# Preparations
+
+## Loading Packages
+
+```{r message=FALSE, warning=FALSE}
+library(DALEX)
+library(tidyverse)
+library(caret)
+library(ranger)
+library(dplyr)
+library(DALEXtra)
+library(lime)
+```
+
+## Loading and Preparing Data Frame
+
+```{r}
+insurance <- read.csv("insurance.csv")
+head(insurance)
+```
+
+```{r}
+insurance$sex <- as.factor(insurance$sex)
+insurance$smoker <- as.factor(insurance$smoker)
+insurance$region <- as.factor(insurance$region)
+```
+
+
+## Splitting Data into Train Set and Test Set
+
+```{r}
+set.seed(42)
+index <- createDataPartition(insurance$charges, p = 0.8, list = FALSE)
+
+train <- insurance[index,]
+test  <- insurance[-index,]
+```
+
+## Creating Model
+
+```{r}
+ranger_model <- ranger(charges ~., data = train)
+pred_ranger <- predict(ranger_model, test)
+postResample(pred_ranger$predictions, test$charges)
+```
+
+The random forest model used in this homework is the same as in homework number 1 because of its performance.
+
+# 1. Selecting Observations
+
+## Observation
+
+```{r}
+observation1 <- test[13, ]
+observation1
+```
+
+## Prediction for Chosen Observation
+
+```{r}
+p1 <- predict(ranger_model, observation1)
+p1$predictions
+observation1$charges
+```
+
+# 2. Prediction Decomposition with LIME Method
+
+```{r}
+explainer_rf <- DALEX::explain(ranger_model, 
+                               data = test[,-7],  
+                               y = test$charges,
+                               label = "random forest")
+```
+```{r}
+model_type.dalex_explainer <- DALEXtra::model_type.dalex_explainer
+predict_model.dalex_explainer <- DALEXtra::predict_model.dalex_explainer
+
+lime_pr1 <- predict_surrogate(explainer = explainer_rf, 
+                             new_observation = observation1[ ,-7], 
+                             n_features = 3, 
+                             n_permutations = 1000,
+                             type = "lime")
+```
+
+
+```{r}
+lime_pr1
+plot(lime_pr1)
+```
+
+The three most important features according to LIME method are `smoker`, `age` and `bmi`. There are some differences between weights of features in LIME method and the Shapley values of the same variable. Three features with the most effect on prediction for observation number 1 according to Shapley values are `age`, `smoker` and `children`. Variable `bmi` is forth. 
+
+The order of variables is not the only difference. Although, the direction of contribution (positive or negative) to the model of each variable is the same, the relative magnitude is different. With Shapley values the absolute value of contribution of `age` and `smoker` are roughtly the same, however, with LIME method the absolute value of `smoker` contribution is approximately four times larger than the contribution of `age` variable.
+
+# 3. Comparison of LIME Decomposition for Different Observations
+
+## Comparison with Random Observation
+
+```{r}
+observation3 <- insurance %>% 
+  filter(age > 51) %>% 
+  filter(smoker == 'yes') %>% 
+  filter(bmi == 26.29)
+
+observation6 <- insurance %>% 
+  filter(age > 51) %>% 
+  filter(smoker == 'no') %>% 
+  filter(bmi == 34.8)
+
+observation7 <- insurance %>% 
+  filter(age > 51) %>% 
+  filter(bmi == 20.1) %>% 
+  filter(smoker == 'no')
+
+observation4 <- insurance %>% 
+  filter(age == 18) %>% 
+  filter(bmi>27,bmi<29) %>% 
+  filter(smoker == 'no') %>% 
+  filter(sex=='female')
+
+observation5 <- insurance %>% 
+  filter(age == 34) %>% 
+  filter(bmi == 27.5) %>% 
+  filter(smoker == 'no') %>% 
+  filter(sex=='female')
+```
+
+## Comparison with Observation with different Value `smoker`
+
+```{r}
+observation3
+```
+```{r}
+lime_pr3 <- predict_surrogate(explainer = explainer_rf, 
+                             new_observation = observation3[ ,-7], 
+                             n_features = 3, 
+                             n_permutations = 1000,
+                             type = "lime")
+plot(lime_pr3)
+```
+
+## Comparison with Observations with different Value `age`
+
+```{r}
+observation4
+observation5
+```
+```{r}
+lime_pr4 <- predict_surrogate(explainer = explainer_rf, 
+                             new_observation = observation4[ ,-7], 
+                             n_features = 3, 
+                             n_permutations = 1000,
+                             type = "lime")
+lime_pr5 <- predict_surrogate(explainer = explainer_rf, 
+                             new_observation = observation5[ ,-7], 
+                             n_features = 3, 
+                             n_permutations = 1000,
+                             type = "lime")
+plot(lime_pr4)
+plot(lime_pr5)
+
+```
+
+## Comparison with Observations with different Value `bmi`
+
+```{r}
+observation6
+observation7
+```
+```{r}
+lime_pr6 <- predict_surrogate(explainer = explainer_rf, 
+                             new_observation = observation6[ ,-7], 
+                             n_features = 3, 
+                             n_permutations = 1000,
+                             type = "lime")
+lime_pr7 <- predict_surrogate(explainer = explainer_rf, 
+                             new_observation = observation7[ ,-7], 
+                             n_features = 3, 
+                             n_permutations = 1000,
+                             type = "lime")
+plot(lime_pr6)
+plot(lime_pr7)
+
+```
+
+# 4. Analysis
+
+## For Different Values in `smoker`
+
+```{r}
+lime_pr1
+lime_pr3
+```
+
+Variables `age` and `bmi` for observation number 1 and number 3 were classify to the same categories. Variable `smoker` is equal to "no" for observation 1 and "yes" for observation 3. The weights of variables are similar for both observation. For variable `smoker` the weights have similar values, but they have different signs. For "no" the weight is negative, and for "yes" it is positive.
+
+## For Different Values in `age`
+
+```{r}
+lime_pr4
+lime_pr5
+```
+
+Weight of variables `smoker` and `bmi`, which were classified into the same categories for observations 1, 4 and 5, are similar. The weight of feature `age` is the largest for values higher than 51, with positive effect on the prediction is positive. For two other observations the absolute value of contribution is smaller, with negative effect on the prediction. As the age gets smaller, the weight of the prediction is getting smaller, changing sign in the process.
+
+## For Different Values in `bmi`
+
+```{r}
+lime_pr6
+lime_pr7
+```
+
+As in two examples above, the weights of variables `smoker` and `age` were similar for similar values of observations 1, 6 and 7. Variable `bmi` was classified to different category for each of those observations, however, weight of feature `bmi` for observation 1 and observation 7 is quite similar and has negative effect on the prediction. Value of variable `age` is the highest for observation 6. The weight of this feature for this observation has positive effect on prediction.
+
+# 5. Conclusion
+
+After compering LIME decomposition for different observation it is possible to conclude that:
+
+* for different observation the same features are most important for prediction
+* if the value of variable was classified to the same category for different observation its weight will be similar
+
+
+
+
+
+
