@@ -1,0 +1,199 @@
+---
+title: "Case Studies 2022L Lab 7"
+author: "Mustafa Cavus"
+date: "Apr 21, 2022"
+output: html_document
+---
+
+# Installing the necessary packages
+
+* {DALEX} for creating explainer and calling the dataset
+* {tidyverse} for using glimpse()
+* {caret} for splitting the dataset to train and test set
+* {ranger} for training random forest model
+* {gbm} for training gbm model
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+#install.packages("DALEX")
+#install.packages("tidyverse")
+#install.packages("caret")
+#install.packages("ranger")
+#install.packages("gbm")
+
+library(DALEX)
+library(tidyverse)
+library(caret)
+library(ranger)
+library(gbm)
+```
+
+# Training the regression models
+
+We will use the apartments dataset from {DALEX}
+
+```{r}
+data("apartments")
+head(apartments)
+```
+
+## Splitting the dataset
+
+We can use createDataPartition() from {caret} package
+
+```{r}
+set.seed(123)
+# create the sample row index for train and test set
+index <- createDataPartition(apartments$m2.price, p = 0.8, list = FALSE)
+
+# using index split to data to train and test set
+train_reg <- apartments[index,]
+test_reg  <- apartments[-index,]
+```
+
+
+## Training a random forest model
+
+ranger() is the fast implementation of the random forest model based on C++. By using it, you can train your model quicker than the usual one.
+
+You need to put target and train set as arguments. Then calculate the predicted values of the model on test set and compare the values of evaluation metrics.
+
+```{r}
+set.seed(123)
+ranger_model <- ranger(m2.price ~., data = train_reg)
+```
+
+## Training a linear regression model
+
+Linear regression is a linear approach for modelling the relationship between a continues response and the explanatory variables. In base R function, `lm()` is used to train a linear regression model with the `model` and `data`.
+
+```{r}
+lr_model <- lm(m2.price ~., data = train_reg)
+```
+
+
+## Training a gbm model
+
+Gradient boosting is a machine learning technique used in regression and classification tasks. It gives a prediction model in the form of an ensemble of weak prediction models are decision trees, then we called the model is gradient boosted trees.
+
+If you want to learn more about the GBM, check out the package manual: https://cran.r-project.org/web/packages/gbm/gbm.pdf.
+
+```{r}
+gbm_model <- gbm(m2.price ~., data = train_reg, distribution = "gaussian")
+```
+
+## Creating explainers
+
+```{r}
+explainer_rf_reg  <- DALEX::explain(model = ranger_model, 
+                                data = test_reg[,-1],  
+                                y = test_reg$m2.price,
+                                type = "regression",
+                                label = "random forest")
+
+explainer_lr_reg  <- DALEX::explain(model = lr_model, 
+                                data = test_reg[,-1],  
+                                y = test_reg$m2.price,
+                                type = "regression",
+                                label = "Linear regression")
+
+explainer_gbm_reg <- DALEX::explain(model = gbm_model, 
+                                data = test_reg[,-1],  
+                                y = test_reg$m2.price,
+                                type = "regression",
+                                label = "gbm")
+```
+
+
+## Creating of the partial-dependence profiles
+
+The function that allows computation of PD profiles in the `DALEX` package is `model_profile()`. The only required argument is `explainer`, which indicates the explainer-object for the model to be explained. The other useful arguments include:
+
+* `variables`, a character vector providing the names of the explanatory variables, for which the profile is to be computed; by default, `variables = NULL`, in which case computations are performed for all numerical variables included in the model.
+
+* `N`, the number of (randomly sampled) observations that are to be used for the calculation of the PD profiles (`N = 100` by default); `N = NULL` implies the use of the entire dataset included in the explainer-object.
+
+* `type`, the type of the PD profile, with values `"partial"` (default), `"conditional"`, and `"accumulated"`.
+
+* `variable_type`, a character string indicating whether calculations should be performed only for `"numerical"` (continuous) explanatory variables (default) or only for `"categorical"` variables.
+
+* `groups`, the name of the explanatory variable that will be used to group profiles, with `groups = NULL` by default (in which case no grouping of profiles is applied).
+
+* `k`, the number of clusters to be created with the help of the `hclust()` function, with `k = NULL` used by default and implying no clustering.
+
+
+```{r}
+pdp_rf <- model_profile(explainer = explainer_rf_reg, variables = "construction.year")
+```
+
+
+Let's plot it!
+
+```{r}
+plot(pdp_rf)
+```
+
+
+
+## Creating of the clustered partial-dependence profiles
+
+To calculate clustered PD profiles, we have got to cluster the CP profiles. Toward this aim, we use the `k` argument of the `model_profile()` function that specifies the number of clusters that are to be formed by the `hclust()` function. In the code below, we specify that three clusters are to be formed for profiles for age.
+
+```{r}
+pdp_rf_clust <- model_profile(explainer = explainer_rf_reg, 
+                              variables = "construction.year", 
+                              k = 3)
+```
+
+
+Let's plot it!
+
+```{r}
+plot(pdp_rf_clust)
+```
+
+
+## Creating of the grouped partial-dependence profiles
+
+The `model_profile()` function admits the `groups` argument that allows constructing PD profiles for groups of observations defined by the levels of an explanatory variable. In the example below, we use the argument to obtain PD profiles for `surface`, while grouping them by `district`.
+
+```{r}
+pdp_rf_district <- model_profile(explainer = explainer_rf_reg, 
+                                 variables = "surface", 
+                                 groups = "district")
+```
+
+Let's plot it!
+
+```{r}
+plot(pdp_rf_district)
+```
+
+
+## Creating of the contrastive partial-dependence profiles
+
+The `model_profile()` function to compute CP profiles and the PD profile for `surface` from the `apartments` dataset. We also repeat the calculations of the profiles for the random forest and gbm model.
+
+```{r}
+pdp_lr  <- model_profile(explainer = explainer_lr_reg, 
+                         variables = "surface")
+
+pdp_rf  <- model_profile(explainer = explainer_rf_reg, 
+                         variables = "surface")
+
+pdp_gbm <- model_profile(explainer = explainer_gbm_reg, 
+                         variables = "surface")
+```
+
+
+Let's plot it!
+
+```{r}
+plot(pdp_lr, pdp_rf, pdp_gbm)
+```
+
+
+# Application
+
+Let's try to compare PD profiles of different models for your task in the projects.
+
+
