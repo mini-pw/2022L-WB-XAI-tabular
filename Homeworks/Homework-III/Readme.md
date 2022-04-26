@@ -1,5 +1,5 @@
 # Homework 3 (10 points)
-Deadline: Apr 28, 23:59.
+Deadline: Apr 28, 23:59 (*flexible until May 4).
 
 For the selected model (you may train 3 different models such as gbm, random forest, neural nets, and select the best performing one), prepare a knitr / jupyter notebook in html or pdf format by solving the points below. Homework should be reported via Pull Request on GitHub in the Homeworks / Homework-III / Surname_Name folder.
 
