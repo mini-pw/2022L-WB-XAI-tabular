@@ -1,11 +1,11 @@
 # Homework 3 (10 points)
-Deadline:  15:00
+Deadline: Apr 28, 23:59 (*flexible until May 4).
 
-For the selected model, prepare a knitr / jupyter notebook in html or pdf format by solving the points below. Homework should be reported via Pull Request on GitHub in the Homeworks / Homework-III / Surname_Name folder.
+For the selected model (you may train 3 different models such as gbm, random forest, neural nets, and select the best performing one), prepare a knitr / jupyter notebook in html or pdf format by solving the points below. Homework should be reported via Pull Request on GitHub in the Homeworks / Homework-III / Surname_Name folder.
 
 1. For the selected observation from the dataset, calculate the model prediction.
-2. For the selected observation from point 1, calculate the model prediction decomposition using the Ceteris Paribus / ICE profiles (R packages: DALEX, ALEPlot, ingredients)
-3. Select two cases from the dataset that have different CP profiles (for example, for observation A, the model response increases as the value of the variable increases, and for observation B, it decreases). Note, in order to have such differences, you must have a model with interactions.
+2. For the selected observation from point 1, calculate the model prediction decomposition using the Ceteris Paribus profiles.
+3. Compare the CP profiles of the selected observation on three different models.
 4.Comment on the individual results obtained in the above paragraphs.
 
 In the homework, first of all, the conclusions of the received analyzes will be assessed. The code needed to make the results reproducible should also be attached.
