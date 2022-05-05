@@ -1,0 +1,182 @@
+---
+title: "Case Studies 2022L Lab 8"
+author: "Mustafa Cavus"
+date: "Apr 28, 2022"
+output: html_document
+---
+
+# Installing the necessary packages
+
+* {DALEX} for creating explainer and calling the dataset
+* {tidyverse} for using glimpse()
+* {caret} for splitting the dataset to train and test set
+* {ranger} for training random forest model
+* {gbm} for training gbm model
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+#install.packages("DALEX")
+#install.packages("tidyverse")
+#install.packages("caret")
+#install.packages("ranger")
+#install.packages("gbm")
+
+library(DALEX)
+library(tidyverse)
+library(caret)
+library(ranger)
+library(gbm)
+```
+
+# Training the models
+
+We will use the apartments dataset from {DALEX}. Recall that the goal is to predict the price per square meter of an apartment.
+
+```{r}
+data("apartments")
+head(apartments)
+```
+
+## Splitting the dataset
+
+We can use createDataPartition() from {caret} package
+
+```{r}
+set.seed(123)
+# create the sample row index for train and test set
+index <- createDataPartition(apartments$m2.price, p = 0.8, list = FALSE)
+
+# using index split to data to train and test set
+train_reg <- apartments[index,]
+test_reg  <- apartments[-index,]
+```
+
+
+## Training a random forest model
+
+ranger() is the fast implementation of the random forest model based on C++. By using it, you can train your model quicker than the usual one.
+
+You need to put target and train set as arguments. Then calculate the predicted values of the model on test set and compare the values of evaluation metrics.
+
+```{r}
+set.seed(123)
+ranger_model <- ranger(m2.price ~., data = train_reg)
+```
+
+## Training a linear regression model
+
+Linear regression is a linear approach for modelling the relationship between a continues response and the explanatory variables. In base R function, `lm()` is used to train a linear regression model with the `model` and `data`.
+
+```{r}
+lr_model <- lm(m2.price ~., data = train_reg)
+```
+
+
+## Training a gbm model
+
+Gradient boosting is a machine learning technique used in regression and classification tasks. It gives a prediction model in the form of an ensemble of weak prediction models are decision trees, then we called the model is gradient boosted trees.
+
+If you want to learn more about the GBM, check out the package manual: https://cran.r-project.org/web/packages/gbm/gbm.pdf.
+
+```{r}
+gbm_model <- gbm(m2.price ~., data = train_reg, distribution = "gaussian")
+```
+
+## Creating explainers
+
+```{r}
+explainer_rf_reg  <- DALEX::explain(model = ranger_model, 
+                                data = test_reg[,-1],  
+                                y = test_reg$m2.price,
+                                type = "regression",
+                                label = "random forest")
+
+explainer_lr_reg  <- DALEX::explain(model = lr_model, 
+                                data = test_reg[,-1],  
+                                y = test_reg$m2.price,
+                                type = "regression",
+                                label = "Linear regression")
+
+explainer_gbm_reg <- DALEX::explain(model = gbm_model, 
+                                data = test_reg[,-1],  
+                                y = test_reg$m2.price,
+                                type = "regression",
+                                label = "gbm")
+```
+
+
+## Creating of the LD and ALE profiles
+
+{DALEX} includes wrappers for functions from the ingredients package (Biecek et al. 2019). Note that similar functionalities can be found in package ALEPlots (Apley 2018) or iml (Molnar, Bischl, and Casalicchio 2018).
+
+The function that allows computation of PD profiles in the `DALEX` package is `model_profile()`. The only required argument is `explainer`, which indicates the explainer-object for the model to be explained. The other useful arguments include:
+
+* `variables`, a character vector providing the names of the explanatory variables, for which the profile is to be computed; by default, `variables = NULL`, in which case computations are performed for all numerical variables included in the model.
+
+* `N`, the number of (randomly sampled) observations that are to be used for the calculation of the PD profiles (`N = 100` by default); `N = NULL` implies the use of the entire dataset included in the explainer-object.
+
+* `type`, the type of the PD profile, with values `"partial"` (default) for PDP, `"conditional"` for LD, and `"accumulated"` for ALE.
+
+* `variable_type`, a character string indicating whether calculations should be performed only for `"numerical"` (continuous) explanatory variables (default) or only for `"categorical"` variables.
+
+* `groups`, the name of the explanatory variable that will be used to group profiles, with `groups = NULL` by default (in which case no grouping of profiles is applied).
+
+* `k`, the number of clusters to be created with the help of the `hclust()` function, with `k = NULL` used by default and implying no clustering.
+
+
+### Local dependence profile
+
+To obtain LD profiles, the type = 'conditional' should be used.
+
+```{r}
+pdp_rf_ld <- model_profile(explainer = explainer_rf_reg, 
+                           variables  = c("no.rooms", "surface"),
+                           type = "conditional")
+```
+
+
+### Accumulated local effect profiles
+
+In order to calculate the AL profiles for age and fare, we apply the model_profile() function with the type = 'accumulated' option.
+
+```{r}
+pdp_rf_ale <- model_profile(explainer = explainer_rf_reg, 
+                            variables  = c("no.rooms", "surface"),
+                            type = "accumulated")
+```
+
+
+### Partial dependence profiles
+
+```{r}
+pdp_rf <- model_profile(explainer = explainer_rf_reg, 
+                        variables  = c("no.rooms", "surface"),
+                        type = "partial")
+```
+
+
+Let's plot it!
+
+```{r}
+plot(pdp_rf_ld, pdp_rf_ale)
+```
+
+
+We can plot PDP, ALE and LD profiles in a single chart. Toward this end, in the code that follows, we must change the label of the profiles before plotting.
+
+Recall that the goal is to predict the price per square meter of an apartment. In our illustration, we focus on two explanatory variables, `surface` and `number of rooms`, as they are correlated.
+
+```{r}
+pdp_rf_ld$agr_profiles$`_label_`  = "LD"
+pdp_rf_ale$agr_profiles$`_label_` = "ALE"
+pdp_rf$agr_profiles$`_label_`     = "PDP"
+plot(pdp_rf_ld, pdp_rf_ale, pdp_rf) 
+```
+
+As we can see from the plots, the profiles calculated with different methods are different. The LD profiles are steeper than the PD profiles. This is because, for instance, the effect of surface includes the effect of other correlated variables, including number of rooms. The AL profile eliminates the effect of correlated variables. Since the AL and PD profiles are parallel to each other, they suggest that the model is additive for these two explanatory variables.
+
+
+# Application
+
+Let's try to compare the profiles of different models for your task in the projects.
+
+
