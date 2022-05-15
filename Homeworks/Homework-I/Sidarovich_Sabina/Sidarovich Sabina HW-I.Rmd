@@ -1,0 +1,144 @@
+---
+title: "HOMEWORK 1"
+author: "Sabina Sidarovich"
+output: html_document
+---
+
+## Packages
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+library(DALEX)
+library(tidyverse)
+library(caret)
+library(ranger)
+library(readr)
+```
+
+## Data uploading
+
+```{r}
+bookings = read.csv2("hotel_bookings.csv", sep=',')
+head(bookings)
+```
+
+## Data exploration and preprocessing
+
+I should mention that I did some EDA for this homework in Python (as I thought it might be useful for the future), so my decisions are based on insights gained from the exploration.
+
+```{r}
+glimpse(bookings)
+```
+
+```{r}
+summary(bookings)
+```
+
+Removing the columns with the lowest correlation (below 0.05) or high percent of missing data (they were found during EDA in another notebook attached, if the explanation for the choice is needed) and replacing the missing values.
+
+```{r}
+bookings$children[which(is.na(bookings$children))] <- 0
+bookings <- bookings[, !(names(bookings) %in% c('reservation_status_date', 'company', 'babies',
+ 'arrival_date_day_of_month',
+ 'days_in_waiting_list',
+ 'arrival_date_week_number',
+ 'agent'))]
+bookings$country[which(is.na(bookings$country))] <- 'Other'
+```
+
+## Training the model
+
+The dataframe was split using the caret package.
+
+```{r}
+set.seed(111)
+index <- createDataPartition(bookings$is_canceled, p = 0.8, list = FALSE)
+train <- bookings[index,]
+test  <- bookings[-index,]
+```
+
+Training a random forest model, as Kaggle users got 95% accuracy when used this model on the dataframe.
+
+```{r}
+set.seed(11)
+model <- ranger(is_canceled ~., data = train)
+```
+
+## Creation of an explainer
+
+```{r}
+explainer_rf <- DALEX::explain(model, 
+                               data = test[,-2],  
+                               y = test$is_canceled,
+                               label='random_forest')
+```
+
+## Observation No 1
+
+Calculating the probability of the cancellation for one of the observations:
+
+```{r}
+prediction_a <-predict(model, data=test[8741, -2])
+prediction_a$predictions
+```
+
+### Break-Down plot
+
+```{r}
+breakdown_a <- predict_parts(explainer = explainer_rf,
+                       new_observation = test[8741, ],
+                       type = "break_down")
+breakdown_a
+```
+
+```{r}
+plot(breakdown_a)
+```
+
+As can be seen, the reservation status has the biggest impact on the variable, which is quite natural. However, the interesting thing concerns the required_car_parking_spaces variable: we see that it has strong negative impact on the observation's predicted value. The rest of the variables have almost no impact on the outcome.
+
+### Shapley values
+
+```{r}
+shap_pr_a <- predict_parts(explainer = explainer_rf,
+                         new_observation = test[8741, ],
+                         type = "shap")
+plot(shap_pr_a)
+```
+
+The results are quite similar; the only difference worth mentioning is the country value influence, as in this case it has positive influence.
+
+## Observation No 2
+
+```{r}
+prediction_b <-predict(model, data=test[25, -2])
+prediction_b$predictions
+```
+
+### Break-Down plot
+
+```{r}
+breakdown_b <- predict_parts(explainer = explainer_rf,
+                       new_observation = test[25, -2],
+                       type = "break_down")
+breakdown_b
+
+```
+
+```{r}
+plot(breakdown_b)
+```
+
+The only differences are that the influence of the arrival_date_year is now 5 times higher and the influence of country variable is 3 times higher. I tried to compare many observations where reservation status or required_parking_spaces are the same as in the 1st case, yet every time I got the same coefficients.
+
+### Shapley values
+
+```{r}
+shap_pr_b <- predict_parts(explainer = explainer_rf,
+                         new_observation = test[25, ],
+                         type = "shap")
+plot(shap_pr_b)
+```
+
+Comparing shapley values, we see that country variable now has almost no impact, whereas in the first case it had positive impact.
+
+P.S. I am sorry for sending this in late, but I spent the last 5 hours fighting with the dataset and trying to find some differences worth showing. I am not sure if the model is overfit of there's some other reason for the fact that each observation I checked basically had the same coefficient for reservation_status and required_parking_spaces (maybe I'm just unlucky, although I tried choosing the variables with min and max probability and comparing them). My guess is that I should definitely work on the model, as the probability in most cases was quite high, despite the actual value being 0. The lesson from all that is that you shouldn't always trust people on Kaggle.
