@@ -1,0 +1,189 @@
+---
+title: "Case Studies 2022L Lab 9"
+author: "Mustafa Cavus"
+date: "May 5, 2022"
+output: html_document
+---
+
+# Installing the necessary packages
+
+* {DALEX} for creating explainer and calling the dataset
+* {tidyverse} for using glimpse()
+* {caret} for splitting the dataset to train and test set
+* {ranger} for training random forest model
+* {gbm} for training gbm model
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+#install.packages("DALEX")
+#install.packages("tidyverse")
+#install.packages("caret")
+#install.packages("ranger")
+#install.packages("gbm")
+
+library(DALEX)
+library(tidyverse)
+library(caret)
+library(ranger)
+library(gbm)
+```
+
+# Training the models
+
+We will use the apartments dataset from {DALEX}. Recall that the goal is to predict the price per square meter of an apartment.
+
+```{r}
+data("apartments")
+head(apartments)
+```
+
+## Splitting the dataset
+
+We can use createDataPartition() from {caret} package
+
+```{r}
+set.seed(123)
+# create the sample row index for train and test set
+index <- createDataPartition(apartments$m2.price, p = 0.8, list = FALSE)
+
+# using index split to data to train and test set
+train_reg <- apartments[index,]
+test_reg  <- apartments[-index,]
+```
+
+
+## Training a random forest model
+
+ranger() is the fast implementation of the random forest model based on C++. By using it, you can train your model quicker than the usual one.
+
+You need to put target and train set as arguments. Then calculate the predicted values of the model on test set and compare the values of evaluation metrics.
+
+```{r}
+set.seed(123)
+ranger_model <- ranger(m2.price ~., data = train_reg)
+```
+
+## Training a linear regression model
+
+Linear regression is a linear approach for modelling the relationship between a continues response and the explanatory variables. In base R function, `lm()` is used to train a linear regression model with the `model` and `data`.
+
+```{r}
+lr_model <- lm(m2.price ~., data = train_reg)
+```
+
+
+## Training a gbm model
+
+Gradient boosting is a machine learning technique used in regression and classification tasks. It gives a prediction model in the form of an ensemble of weak prediction models are decision trees, then we called the model is gradient boosted trees.
+
+If you want to learn more about the GBM, check out the package manual: https://cran.r-project.org/web/packages/gbm/gbm.pdf.
+
+```{r}
+gbm_model <- gbm(m2.price ~., data = train_reg, distribution = "gaussian")
+```
+
+## Creating explainers
+
+```{r}
+explainer_rf  <- DALEX::explain(model = ranger_model, 
+                                data = test_reg[,-1],  
+                                y = test_reg$m2.price,
+                                type = "regression",
+                                label = "random forest")
+
+explainer_lr  <- DALEX::explain(model = lr_model, 
+                                data = test_reg[,-1],  
+                                y = test_reg$m2.price,
+                                type = "regression",
+                                label = "Linear regression")
+
+explainer_gbm <- DALEX::explain(model = gbm_model, 
+                                data = test_reg[,-1],  
+                                y = test_reg$m2.price,
+                                type = "regression",
+                                label = "gbm")
+```
+
+
+# Exploring residuals
+
+For exploration of residuals, DALEX includes two useful functions: `model_performance()` can be used to evaluate the distribution of the residuals, and `model_diagnostics()` is suitable for investigating the relationship between residuals and other variables.
+
+```{r}
+mp_lr  <- model_performance(explainer_lr)
+mp_rf  <- model_performance(explainer_rf)
+mp_gbm <- model_performance(explainer_gbm)
+```
+
+
+By applying the `plot()` function to a “model_performance”-class object, various plots can be obtained. The required type of the plot is specified with the help of the `geom` argument. In particular, specifying `geom = "histogram"` results in a histogram of residuals.
+
+```{r}
+library(ggplot2)
+plot(mp_lr, mp_rf, mp_gbm, geom = "histogram") 
+```
+
+Despite the similar value of RMSE of random forest and linear regression model, the distributions of residuals for both models are different. In particular, the distribution for the linear-regression model is, in fact, split into two separate, normal-like parts, which may suggest omission of a binary explanatory variable in the model. The two components are located around the values of about -200 and 400. The reason for this behavior of the residuals is the fact that the model does not capture the non-linear relationship between the price and the year of construction. The distribution of residuals for the random forest model is skewed to the right.
+
+
+The box-and-whisker plots of the residuals for the two models can be constructed by applying the `geom = "boxplot"` argument. 
+
+```{r}
+library(ggplot2)
+plot(mp_lr, mp_rf, mp_gbm, geom = "boxplot") 
+```
+
+The plot, which is in above, suggest that the residuals for the gbm model are more frequently smaller than the residuals for the linear-regression and random forest model. A small fraction of the random forest-model residuals is very large, and it is due to them that the RMSE is comparable for the two models.
+
+
+Function `model_diagnostics()` can be applied to an explainer-object to directly compute residuals. The resulting object of class “model_diagnostics” is a data frame in which the residuals and their absolute values are combined with the observed and predicted values of the dependent variable and the observed values of the explanatory variables. The data frame can be used to create various plots illustrating the relationship between residuals and the other variables.
+
+```{r}
+md_lr  <- model_diagnostics(explainer_lr)
+md_rf  <- model_diagnostics(explainer_rf)
+md_gbm <- model_diagnostics(explainer_gbm)
+```
+
+
+Application of the `plot()` function to a model_diagnostics-class object produces, by default, a scatter plot of residuals (on the vertical axis) in function of the predicted values of the dependent variable (on the horizontal axis). By using arguments `variable` and `yvariable`, it is possible to specify plots with other variables used for the horizontal and vertical axes, respectively. The two arguments accept, apart from the names of the explanatory variables, the following values:
+
+* `"y"` for the dependent variable,
+* `"y_hat"` for the predicted value of the dependent variable,
+* `"obs"` for the identifiers of observations,
+* `"residuals"` for residuals,
+* `"abs_residuals"` for absolute values of residuals.
+
+Thus, to obtain the plot of residuals in function of the observed values of the dependent variable, the following codes can be used.
+
+```{r}
+plot(md_lr, md_rf, md_gbm, variable = "y", yvariable = "residuals") 
+```
+
+The plot shows a scatter plot of residuals (vertical axis) in function of the observed (horizontal axis) values of the dependent variable. For a “perfect” predictive model, we would expect the horizontal line at zero. For a “good” model, we would like to see a symmetric scatter of points around the horizontal line at zero, indicating random deviations of predictions from the observed values. 
+
+
+To produce the figure which the predicted values of the dependent variable on the vertical axis. This is achieved by specifying the `yvariable = "y_hat"` argument. We add the diagonal reference line to the plot by using the `geom_abline()` function.
+
+```{r}
+plot(md_lr, variable = "y", yvariable = "y_hat") +
+  geom_abline(colour = "red", intercept = 0, slope = 1)
+```
+For a “perfectly” fitting model we would expect a diagonal line (indicated in red). The plot shows that, for large observed values of the dependent variable, the predictions are smaller than the observed values, with an opposite trend for the small observed values of the dependent variable.
+
+The following plot presents an index plot of residuals, i.e., residuals (on the vertical axis) in function of identifiers of individual observations (on the horizontal axis). Toward this aim, we use the plot() function call as below.
+
+```{r}
+plot(md_rf, variable = "ids", yvariable = "residuals")
+```
+
+The following plot presents a variant of the scale-location plot, with absolute values of the residuals shown on the vertical scale and the predicted values of the dependent variable on the horizontal scale. The plot is obtained with the syntax shown below.
+
+```{r}
+plot(md_rf, variable = "y_hat", yvariable = "abs_residuals")
+```
+
+
+# Application
+
+Let's analyze the residuals of different models for apartments dataset or your task in the projects.
+
+

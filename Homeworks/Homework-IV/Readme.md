@@ -1,5 +1,5 @@
 # Homework 4 (10 points)
-Deadline: 04/29/2021 15:00
+Deadline: May 18, 2022 23:59
 
 For the selected model, prepare a knitr / jupyter notebook in html or pdf format by solving the points below. Homework should be reported via Pull Request on GitHub in the Homeworks / Homework-IV / Surname_Name folder.
 
