@@ -1,0 +1,77 @@
+---
+title: "WB_HW4"
+output: html_document
+date: '2022-05-25'
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+```{r cars}
+library(DALEX)
+library(caret)
+set.seed(2137)
+
+data <- read.csv("insurance.csv")
+data$sex <- as.factor(data$sex)
+data$smoker <- as.factor(data$smoker)
+data$region <- as.factor(data$region)
+head(data)
+```
+Now, let's split the data into training and test datasets.
+```{r}
+set.seed(11)
+index <- createDataPartition(apartments$m2.price, p = 0.5, list = FALSE)
+
+train <- data[index,]
+test  <- data[-index,]
+
+x_train <- train[,-c(7)]
+y_train <- train[, 7]
+
+x_test <- test[,-c(7)]
+y_test <- test[, 7]
+```
+
+After splitting the data, we can train the models.
+```{r}
+library(ranger)
+
+forest <- ranger(charges~., data=train)
+y_pred <- predict(forest, x_test)
+print(y_pred$predictions[50])
+print(y_test[50])
+```
+Lets's create the explainer:
+```{r}
+explainer_rf <- DALEX::explain(forest, 
+                               data = x_test,  
+                               y = y_test,
+                               label = "random forest")
+```
+Now let's calculate the PDPs.
+```{r}
+pdp_rf <- model_profile(explainer = explainer_rf, variables = "bmi")
+plot(pdp_rf)
+```
+At first the function doesn't increse much, however when bmi is around 30, the prediction rapidly grows: from around 12000 to 15000 and later to 16000. When the bmi gets around 42, the prediction's growth is almost linear.
+
+```{r}
+pdp_rf <- model_profile(explainer = explainer_rf, variables = "age")
+plot(pdp_rf)
+```
+As predicted, the prediction increases with the patient's age. The proportion is more less linear.
+
+Now let's create Accumulated Local Dependences.
+```{r}
+pdp_rf_ale <- model_profile(explainer = explainer_rf, 
+                            variables  = c("bmi", "age"),
+                            type = "accumulated")
+plot(pdp_rf_ale)
+```
+As for age, the conclusions are similar as in PDP profiles. The function is a bit more steep, but still similar to linear.
+The plot for BMI is a bit different however. At first the prediction is almost constant(aroud 11 000). Later, when the bmi is around 30, the prediction rapidly grows and is almost exponential.
