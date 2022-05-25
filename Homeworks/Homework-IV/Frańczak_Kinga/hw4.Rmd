@@ -1,0 +1,151 @@
+---
+title: "Homework 4"
+author: "Kinga Frańczak"
+output: html_document
+---
+
+# Preparation
+
+## Loading Packages
+
+```{r message=FALSE, warning=FALSE}
+library(DALEX)
+library(tidyverse)
+library(caret)
+library(ranger)
+library(dplyr)
+library(DALEXtra)
+library(gbm)
+```
+
+## Loading Data Frame
+
+```{r}
+insurance <- read.csv("insurance.csv")
+head(insurance)
+```
+
+## Preparing Data Set
+
+Categorical variables `sex`, `smoker` and `region` were change from character to factor to prepare data for use of gbm model.
+
+```{r}
+insurance <- as.data.frame(unclass(insurance),                     
+                       stringsAsFactors = TRUE)
+str(insurance)
+```
+
+## Splitting Data into Training Set and Test Set
+
+```{r}
+set.seed(42)
+
+index <- createDataPartition(insurance$charges, p = 0.8, list = FALSE)
+train <- insurance[index,]
+test  <- insurance[-index,]
+```
+
+## Creating Models
+
+Three model are used for predictions:
+
+* Linear Regression
+* Random Forest
+* gbm
+
+```{r}
+lr <- lm(charges ~., data = train)
+```
+
+```{r}
+rf <- ranger(charges ~., data = train)
+```
+
+```{r}
+gbm <- gbm(charges ~., data = train, distribution = "gaussian")
+```
+
+## Comparison of Models' Performance
+
+```{r, echo=TRUE, results='hide'}
+explainer_lr  <- DALEX::explain(model = lr, 
+                                data = test[,-7],  
+                                y = test$charges,
+                                type = "regression",
+                                label = "linear regression")
+
+explainer_rf  <- DALEX::explain(model = rf, 
+                                 data = test[,-7],  
+                                 y = test$charges,
+                                 type = "regression",
+                                 label = "random forest")
+
+explainer_gbm <- DALEX::explain(model = gbm, 
+                                data = test[,-7],  
+                                y = test$charges,
+                                type = "regression",
+                                label = "gbm")
+```
+
+```{r}
+model_performance(explainer_lr)
+```
+
+```{r}
+model_performance(explainer_rf)
+```
+
+```{r}
+model_performance(explainer_gbm)
+```
+
+Linear Regression model and gbm model have similar values of rmse and r2. Random Forest model has the lowest rmse value and the highest r2 value among three models presented above.
+
+# 1. The Permutational Importance of the Variables for Random Forest Model
+
+
+```{r}
+vip_rf  <- model_parts(explainer_rf)
+
+plot(vip_rf)
+```
+
+# 2. The Permutational Importance of the Variables for Three Models
+
+```{r}
+vip_lr  <- model_parts(explainer_lr)
+vip_gbm <- model_parts(explainer_gbm)
+```
+
+```{r}
+plot(vip_lr)
+```
+
+```{r}
+plot(vip_lr)
+```
+
+# 3. Comparison of Permutational Importance 
+
+```{r,fig.width=8, fig.height=8}
+plot(vip_lr, vip_rf, vip_gbm)
+```
+
+Plots of feature importance for to most similar models, based on their performance, linear regression and gbm are nearly identical. The magnitude of loss after permutations is the greatest for `smoker` for all of the three models. 
+
+Feature `age` is the second greatest magnitude of loss for both linear regression model and gbm. For random forest model it is `bmi`. The third feature is `bmi` for linear regression and gbm, and `age` for random forest. 
+
+For both linear regression and gbm value for `age` is around 3 or 4 times bigger than value for `bmi`. For random forest model, where `bmi` has higher value, both variables are much more close together.
+
+The value of $L_{0}$ for gbm and linear regression is slightly above 6250, and for random forest is above 5000.
+
+Features `children`, `region` and `sex` are the least important for all of the three models and the value of loss is negligible. 
+
+# Conclusion
+
+* The values of RMSE loss after permutations for gbm model and linear regression model are similar for every feature, which may explain why they have similar model performance.
+
+* The value of $L_{0}$ is the smallest for random forest, which is the model that have the best performance and the smallest RMSE.
+
+
+
