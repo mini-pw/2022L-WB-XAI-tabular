@@ -16,9 +16,9 @@
 |  8   | Apr 14, 2022  | [Variable importance measures](https://github.com/MI2-Education/2022L-WB-XAI-tabular/blob/main/Labs/cs_apr14.pdf) + [Lab6](https://github.com/MI2-Education/2022L-WB-XAI-tabular/blob/main/Labs/cs_apr14.Rmd)                                         ||
 |  9   | Apr 21, 2022  | [Partial Dependence Profiles](https://github.com/MI2-Education/2022L-WB-XAI-tabular/blob/main/Labs/cs_apr21.pdf) + [Lab7](https://github.com/MI2-Education/2022L-WB-XAI-tabular/blob/main/Labs/cs_apr21.Rmd) + [Homework III](https://github.com/MI2-Education/2022L-WB-XAI-tabular/tree/main/Homeworks/Homework-III)                              | 10 pts.      |
 | 10   | Apr 28, 2022  | [Accumulated Local Effects](https://github.com/MI2-Education/2022L-WB-XAI-tabular/blob/main/Labs/cs_apr28.pdf) + [Lab8](https://github.com/MI2-Education/2022L-WB-XAI-tabular/blob/main/Labs/cs_apr28.Rmd)                                         ||
-| 11   | May 5, 2022   | Overview of homework        |  10 pts.     |
-| 12   | May 19, 2022  | Global Explanations                                              |       |
-| 13   | May 26, 2022  | Overview of homework                                            |10 pts.|
+| 11   | May 5, 2022   | [Residual-diagnostics plots](https://github.com/MI2-Education/2022L-WB-XAI-tabular/blob/main/Labs/cs_may5.pdf) + [Lab9](https://github.com/MI2-Education/2022L-WB-XAI-tabular/blob/main/Labs/cs_may5.Rmd) + [Homework IV](https://github.com/MI2-Education/2022L-WB-XAI-tabular/tree/main/Homeworks/Homework-IV)        |  10 pts.     |
+| 12   | May 19, 2022  | Preliminary project presentation + [Homework V](https://github.com/MI2-Education/2022L-WB-XAI-tabular/tree/main/Homeworks/Homework-V)                                             | 10 pts. |
+| 13   | May 26, 2022  | Overview of homework                                            ||
 | 14   | Jun 2, 2022   | Model exploration                                                |       |
 | 15   | Jun 9, 2022   | Summary of the projects / consultation                           |       |
 
