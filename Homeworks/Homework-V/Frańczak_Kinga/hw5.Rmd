@@ -1,0 +1,327 @@
+---
+title: "Homework 5"
+author: "Kinga Frańczak"
+output: html_document
+---
+
+
+# Preparation
+
+## Loading Packages
+
+```{r message=FALSE, warning=FALSE}
+library(DALEX)
+library(tidyverse)
+library(caret)
+library(ranger)
+library(dplyr)
+library(DALEXtra)
+library(gbm)
+library(patchwork)
+library(ggplot2)
+```
+
+## Loading Data Frame
+
+```{r}
+insurance <- read.csv("insurance.csv")
+head(insurance)
+```
+
+## Preparing Data Set
+
+Categorical variables `sex`, `smoker` and `region` were change from character to factor to prepare data for use of gbm model.
+
+```{r}
+insurance <- as.data.frame(unclass(insurance),                     
+                       stringsAsFactors = TRUE)
+str(insurance)
+```
+
+## Splitting Data into Training Set and Test Set
+
+```{r}
+set.seed(42)
+
+index <- createDataPartition(insurance$charges, p = 0.8, list = FALSE)
+train <- insurance[index,]
+test  <- insurance[-index,]
+```
+
+## Creating Models
+
+Three model are used for predictions:
+
+* Linear Regression
+* Random Forest
+* gbm
+
+```{r}
+lr <- lm(charges ~., data = train)
+```
+
+```{r}
+rf <- ranger(charges ~., data = train)
+```
+
+```{r}
+gbm <- gbm(charges ~., data = train, distribution = "gaussian")
+```
+
+## Comparison of Models' Performance
+
+```{r, echo=TRUE, results='hide'}
+explainer_lr  <- DALEX::explain(model = lr, 
+                                data = test[,-7],  
+                                y = test$charges,
+                                type = "regression",
+                                label = "linear regression")
+
+explainer_rf  <- DALEX::explain(model = rf, 
+                                 data = test[,-7],  
+                                 y = test$charges,
+                                 type = "regression",
+                                 label = "random forest")
+
+explainer_gbm <- DALEX::explain(model = gbm, 
+                                data = test[,-7],  
+                                y = test$charges,
+                                type = "regression",
+                                label = "gbm")
+```
+
+```{r}
+model_performance(explainer_lr)
+```
+
+```{r}
+model_performance(explainer_rf)
+```
+
+```{r}
+model_performance(explainer_gbm)
+```
+
+Linear Regression model and gbm model have similar values of rmse and r2. Random Forest model has the lowest rmse value and the highest r2 value among three models presented above.
+
+# 1. Partial Dependence Profiles
+
+## `smoker` Variable
+
+```{r, message=FALSE}
+pdp_lr_smoker <- model_profile(explainer = explainer_lr, variables = "smoker")
+pdp_rf_smoker <- model_profile(explainer = explainer_rf, variables = "smoker")
+pdp_gbm_smoker <- model_profile(explainer = explainer_gbm, variables = "smoker")
+```
+
+```{r}
+plot(pdp_rf_smoker, pdp_lr_smoker, pdp_gbm_smoker)
+```
+
+## `age` Variable
+
+```{r, message = FALSE}
+pdp_lr_age <- model_profile(explainer = explainer_lr, variables = "age")
+pdp_rf_age <- model_profile(explainer = explainer_rf, variables = "age")
+pdp_gbm_age <- model_profile(explainer = explainer_gbm, variables = "age")
+```
+
+```{r}
+plot(pdp_rf_age, pdp_lr_age, pdp_gbm_age)
+```
+
+## `sex` Variable
+
+```{r, message = FALSE}
+pdp_lr_sex <- model_profile(explainer = explainer_lr, variables = "sex")
+pdp_rf_sex <- model_profile(explainer = explainer_rf, variables = "sex")
+pdp_gbm_sex <- model_profile(explainer = explainer_gbm, variables = "sex")
+```
+
+```{r}
+plot(pdp_rf_sex, pdp_lr_sex, pdp_gbm_sex)
+```
+
+## `bmi` Variable
+
+```{r, message = FALSE}
+pdp_lr_bmi <- model_profile(explainer = explainer_lr, variables = "bmi")
+pdp_rf_bmi <- model_profile(explainer = explainer_rf, variables = "bmi")
+pdp_gbm_bmi <- model_profile(explainer = explainer_gbm, variables = "bmi")
+```
+
+```{r}
+plot(pdp_rf_bmi, pdp_lr_bmi, pdp_gbm_bmi)
+```
+
+## `region` Variable
+
+```{r, message = FALSE}
+pdp_lr_region <- model_profile(explainer = explainer_lr, variables = "region")
+pdp_rf_region <- model_profile(explainer = explainer_rf, variables = "region")
+pdp_gbm_region <- model_profile(explainer = explainer_gbm, variables = "region")
+```
+
+```{r}
+plot(pdp_rf_region, pdp_lr_region, pdp_gbm_region)
+```
+
+## `children` Variable
+
+```{r, message = FALSE}
+pdp_lr_children <- model_profile(explainer = explainer_lr, variables = "children")
+pdp_rf_children <- model_profile(explainer = explainer_rf, variables = "children")
+pdp_gbm_children <- model_profile(explainer = explainer_gbm, variables = "children")
+```
+
+```{r}
+plot(pdp_rf_children, pdp_lr_children, pdp_gbm_children)
+```
+
+
+# 2. Accumulated Local Dependence
+
+## `smoker` Variable
+
+```{r, message = FALSE}
+al_rf_smoker <- model_profile(explainer = explainer_rf,
+                      type       = "accumulated",
+                      variables  = "smoker")
+al_lr_smoker <- model_profile(explainer = explainer_lr,
+                      type       = "accumulated",
+                      variables  = "smoker")
+al_gbm_smoker <- model_profile(explainer = explainer_gbm,
+                        type      = "accumulated",
+                        variables = "smoker")
+```
+
+```{r}
+plot(al_rf_smoker, al_lr_smoker, al_gbm_smoker)
+```
+
+## `age` Variable
+
+```{r, message = FALSE}
+al_rf_age <- model_profile(explainer = explainer_rf,
+                      type       = "accumulated",
+                      variables  = "age")
+al_lr_age <- model_profile(explainer = explainer_lr,
+                      type       = "accumulated",
+                      variables  = "age")
+al_gbm_age <- model_profile(explainer = explainer_gbm,
+                        type      = "accumulated",
+                        variables = "age")
+```
+
+```{r}
+plot(al_rf_age, al_lr_age, al_gbm_age)
+```
+
+## `sex` Variable
+
+```{r, message = FALSE}
+al_rf_sex <- model_profile(explainer = explainer_rf,
+                      type       = "accumulated",
+                      variables  = "sex")
+al_lr_sex <- model_profile(explainer = explainer_lr,
+                      type       = "accumulated",
+                      variables  = "sex")
+al_gbm_sex <- model_profile(explainer = explainer_gbm,
+                        type      = "accumulated",
+                        variables = "sex")
+```
+
+```{r}
+plot(al_rf_sex, al_lr_sex, al_gbm_sex)
+```
+
+## `bmi` Variable
+
+```{r, message = FALSE}
+al_rf_bmi <- model_profile(explainer = explainer_rf,
+                      type       = "accumulated",
+                      variables  = "bmi")
+al_lr_bmi <- model_profile(explainer = explainer_lr,
+                      type       = "accumulated",
+                      variables  = "bmi")
+al_gbm_bmi <- model_profile(explainer = explainer_gbm,
+                        type      = "accumulated",
+                        variables = "bmi")
+```
+
+```{r}
+plot(al_rf_bmi, al_lr_bmi, al_gbm_bmi)
+```
+
+## `region` Variable
+
+```{r, message = FALSE}
+al_rf_region <- model_profile(explainer = explainer_rf,
+                      type       = "accumulated",
+                      variables  = "region")
+al_lr_region <- model_profile(explainer = explainer_lr,
+                      type       = "accumulated",
+                      variables  = "region")
+al_gbm_region <- model_profile(explainer = explainer_gbm,
+                        type      = "accumulated",
+                        variables = "region")
+```
+
+```{r}
+plot(al_rf_region, al_lr_region, al_gbm_region)
+```
+
+## `children` Variable
+
+```{r, message = FALSE}
+al_rf_children <- model_profile(explainer = explainer_rf,
+                      type       = "accumulated",
+                      variables  = "children")
+al_lr_children <- model_profile(explainer = explainer_lr,
+                      type       = "accumulated",
+                      variables  = "children")
+al_gbm_children <- model_profile(explainer = explainer_gbm,
+                        type      = "accumulated",
+                        variables = "children")
+```
+
+```{r}
+plot(al_rf_children, al_lr_children, al_gbm_children)
+```
+
+# 3. Comparison of Results
+
+## `smoker` Variable
+
+* For accumulated dependence profile average prediction for value "no" is slightly higher for linear regression model than for others
+
+* For partial dependence profile for value "no" average prediction is slightly lower for linear regression model
+
+* Average prediction values are approximately 3000 and 25000 for values "no" and "yes" respectively in accumulated dependence profile and 8000 and 30000 in partial dependence profile
+
+* the  values of average prediction for "no" and "yes" have slightly smaller proportional differences in values for partial dependence profile
+
+## `age` Variable
+
+* In accumulated dependence profile gbm model has the lowest values of average predictions and random forest has the highest
+
+* The opposite is true for partial dependence profiles, where gbm model has the highest values and random forest has the lowest
+
+* The values for partial dependence profiles is larger than for accumulated dependence profiles, however, the difference is not big
+
+* Average prediction values for partial dependence profiles starts around 8000 and 7500 for accumulated dependence profiles. They reach their highest values slightly below 20000 and slightly above 20000 respectively.
+
+## `bmi` variable
+
+* In both profiles values of average prediction for gbm model is higher than for random forest
+
+* In accumulated dependence profile values of average prediction for gbm and random forest are closer than in partial dependence profile
+
+* The average prediction values of accumulated dependence profiles are slightly lower than values of partial dependence profiles
+
+# Conclusions
+
+* The values of average prediction from accumulated dependence profiles are generally lower than those from partial dependence profiles
+
+* The hierarchy of average prediction values for models may change between accumulated and partial dependence profiles
+
