@@ -1,0 +1,84 @@
+---
+title: "WB_HW4"
+output: html_document
+date: '2022-05-25'
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+```{r cars}
+library(DALEX)
+library(caret)
+set.seed(2137)
+
+data <- read.csv("insurance.csv")
+data$sex <- as.factor(data$sex)
+data$smoker <- as.factor(data$smoker)
+data$region <- as.factor(data$region)
+head(data)
+```
+Now, let's split the data into training and test datasets.
+```{r}
+set.seed(11)
+index <- createDataPartition(apartments$m2.price, p = 0.5, list = FALSE)
+
+train <- data[index,]
+test  <- data[-index,]
+
+x_train <- train[,-c(7)]
+y_train <- train[, 7]
+
+x_test <- test[,-c(7)]
+y_test <- test[, 7]
+```
+
+After splitting the data, we can train the models.
+```{r}
+library(ranger)
+library(gbm)
+
+forest <- ranger(charges~., data=train)
+y_pred <- predict(forest, x_test)
+print(y_pred$predictions[50])
+print(y_test[50])
+
+lr_model <- lm(charges~., data = train)
+pred_lr <- predict(lr_model, test)
+print(pred_lr[50])
+
+gbm_model <- gbm(charges~., data = train, distribution = "gaussian")
+y_gbm <- predict(gbm_model, x_test)
+print(y_gbm[50])
+```
+Lets's create explainers:
+```{r}
+explainer_rf <- DALEX::explain(forest, 
+                               data = x_test,  
+                               y = y_test,
+                               label = "random forest")
+
+explainer_lr <- DALEX::explain(lr_model, 
+                               data = x_test,  
+                               y = y_test,
+                               label = "linear regression")
+
+explainer_gbm <- DALEX::explain(gbm_model, 
+                               data = x_test,  
+                               y = y_test,
+                               label = "GBM model")
+```
+
+Once we have the explainers, let's calculate the variable importance measure for our models and plot them.
+```{r}
+vip_rf  <- model_parts(explainer_rf)
+vip_lr  <- model_parts(explainer_lr)
+vip_gbm <- model_parts(explainer_gbm)
+
+plot(vip_rf, vip_lr, vip_gbm)
+```
+All models suggest that 'smoker' variable is the most important. They all have similar value (around 14000-15000). GBM and Linear Regression models claim that age variable is second most important. However, random forest claims that bmi is more important than age. Two previous models place bmi variable on the third place. They all agree that remaining three variables are of no big importance. What is interesting, is that the initial value for GBM and linear regression is around 6200 and for random forest is around 5000.
