@@ -1,0 +1,216 @@
+---
+title: "Homework 3"
+author: "Kinga Frańczak"
+output: html_document
+---
+
+# Preparation
+
+## Loading Packages
+
+```{r message=FALSE, warning=FALSE}
+library(DALEX)
+library(tidyverse)
+library(caret)
+library(ranger)
+library(dplyr)
+library(DALEXtra)
+library(gbm)
+```
+
+## Loading Data Frame
+
+```{r}
+insurance <- read.csv("insurance.csv")
+head(insurance)
+```
+
+## Preparing Data Set
+
+Categorical variables `sex`, `smoker` and `region` were change from character to factor to prepare data for use of gbm model.
+
+```{r}
+insurance <- as.data.frame(unclass(insurance),                     
+                       stringsAsFactors = TRUE)
+str(insurance)
+```
+
+## Splitting Data into Training Set and Test Set
+
+```{r}
+set.seed(42)
+
+index <- createDataPartition(insurance$charges, p = 0.8, list = FALSE)
+train <- insurance[index,]
+test  <- insurance[-index,]
+```
+
+## Creating Models
+
+Three model are used for predictions:
+
+* Linear Regression
+* Random Forest
+* gbm
+
+```{r}
+lr <- lm(charges ~., data = train)
+```
+
+```{r}
+rf <- ranger(charges ~., data = train)
+```
+
+```{r}
+gbm <- gbm(charges ~., data = train, distribution = "gaussian")
+```
+
+## Comparison of Models' Performance
+
+```{r, echo=TRUE, results='hide'}
+explainer_lr  <- DALEX::explain(model = lr, 
+                                data = test[,-7],  
+                                y = test$charges,
+                                type = "regression",
+                                label = "linear regression")
+
+explainer_rf  <- DALEX::explain(model = rf, 
+                                 data = test[,-7],  
+                                 y = test$charges,
+                                 type = "regression",
+                                 label = "random forest")
+
+explainer_gbm <- DALEX::explain(model = gbm, 
+                                data = test[,-7],  
+                                y = test$charges,
+                                type = "regression",
+                                label = "gbm")
+```
+```{r}
+model_performance(explainer_lr)
+```
+
+```{r}
+model_performance(explainer_rf)
+```
+
+```{r}
+model_performance(explainer_gbm)
+```
+
+Linear Regression model and gbm model have similar values of rmse and r2. Random Forest model has the lowest rmse value and the highest r2 value among three models presented above.
+
+# 1. Choosing Observation and Calculating Predictions
+
+```{r}
+observation1 <- test[13, ]
+observation1
+```
+
+```{r, message=FALSE}
+pred_lr <- predict(lr, observation1[ ,-7])
+pred_rf <- predict(rf, observation1[ ,-7])
+pred_gbm <- predict(gbm, observation1[ ,-7])
+```
+
+```{r}
+predictions <- c(pred_lr[[1]], pred_rf$predictions, pred_gbm)
+models <- c("linear regression", "random forest", "gbm")
+difference <- abs(predictions - observation1$charges)
+results <- data.frame(Model = models, Prediction = predictions, Difference = difference)
+
+results
+```
+
+Linear Regression model's prediction was the most accurate for observation nr 1.
+
+# 2. Creating Ceteris Paribus Profiles
+```{r}
+cp_lr <- predict_profile(explainer = explainer_lr,
+                         new_observation = observation1)
+cp_rf <- predict_profile(explainer = explainer_rf,
+                         new_observation = observation1)
+cp_gbm <- predict_profile(explainer = explainer_gbm,
+                         new_observation = observation1)
+```
+# 3. Ceteris Paribus Profiles for Different Models
+
+## `age` Variable
+
+```{r}
+plot(cp_lr, cp_rf, cp_gbm, variables = "age")
+```
+
+## `sex` Variable
+
+```{r}
+plot(cp_lr, cp_rf, cp_gbm, variables = "sex", variable_type = "categorical", categorical_type = "bars")
+```
+
+## `bmi` Variable
+
+```{r}
+plot(cp_lr, cp_rf, cp_gbm, variables = "bmi")
+```
+
+## `children` Variable
+
+```{r}
+plot(cp_lr, cp_rf, cp_gbm, variables = "children")
+```
+
+## `smoker` Variable
+
+```{r}
+plot(cp_lr, cp_rf, cp_gbm, variables = "smoker", variable_type = "categorical", categorical_type = "bars")
+```
+
+## `region` Variable
+
+```{r}
+plot(cp_lr, cp_rf, cp_gbm, variables = "region", variable_type = "categorical", categorical_type = "bars")
+```
+
+# 4. Models' Ceteris Paribus Profiles Comparison
+
+## `age` Variable
+
+* predictions are similar values
+* gbm's predictions have the smallest values
+
+## `bmi` Variable
+
+* values of Random Forest's prediction are close to each other and difference between values is the smallest among three models
+* differences between predictions' values for Linear Regression are the larges
+* for gbm and Linear Regression with the increase of bmi comes increase in predicted values
+* for Random Forest curve resembles constant function, with the highest values around 26-28 and 35
+
+## `children` Variable
+
+* gbm's and Linear Regression's predictions are similar and pararel to each other
+* varieble contribution is noticeably higher for Random Forest
+* for smaller values Linear Regression predictions are closer to gbm's predictions and for higher values of children variable they are closer to Random Forest values
+
+## `sex` Variable
+
+* for gbm and Linear Regression values of predictions are smaller when `sex` variable is equal to "male"
+* the opposite is true for Random Forest model
+
+## `smoker` Variable
+
+* for every model perdictions' values are considerably higher if the value of `smoker` is "yes"
+* similar results may be an effect of high importance of `smoker` variable in predictions, which was discover in previous homeworks
+
+
+## `region` Variable
+
+* for different models different regions have the biggest positive impact
+* for Linear Regression value "southeast" has one of the smallest contribution
+* for Random Forest the same value has the greatest positive contribution
+* differences in effects could be larger because of low importance of this variable for prediction
+
+# Conclusions
+
+* the range of predictions is highest for variables `smoker` and `age` (around 25000 and 12000 respectively) and smaller for less important variables, which are `sex`, `children` and `region``, (from 2500 to 4000) 
+* variable `bmi`, which has medium importance has range around 10000 for Linear Regression model and 2500 for Random Forest
+* the more important the variable is, the more conclusive Ceteris Paribus profiles are

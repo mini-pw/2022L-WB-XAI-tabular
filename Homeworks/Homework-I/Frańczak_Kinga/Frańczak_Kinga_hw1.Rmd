@@ -1,0 +1,157 @@
+---
+title: "Homework 1"
+author: "Kinga Frańczak"
+output:
+  html_document:
+    df_print: paged
+---
+
+# Preparation
+
+For this predictions I am using data frame `insurance.csv` that contains information about patient and the charges for medical insurance. The goal is to predict the cost of insurance.
+
+## Loading Packages
+
+```{r message=FALSE, warning=FALSE}
+library(DALEX)
+library(tidyverse)
+library(caret)
+library(ranger)
+library(dplyr)
+```
+
+## Loading Data Frame
+
+```{r}
+insurance <- read.csv("insurance.csv")
+head(insurance)
+```
+
+## Splitting Data into Train Set and Test Set
+
+```{r}
+set.seed(42)
+index <- createDataPartition(insurance$charges, p = 0.8, list = FALSE)
+
+train <- insurance[index,]
+test  <- insurance[-index,]
+```
+
+## Creating Models
+
+```{r}
+lr_model <- lm(charges ~., data = train)
+pred_lr <- predict(lr_model, test)
+postResample(pred_lr, test$charges)
+```
+
+```{r}
+ranger_model <- ranger(charges ~., data = train)
+pred_ranger <- predict(ranger_model, test)
+postResample(pred_ranger$predictions, test$charges)
+```
+I create two models: a linear regression model and a random forest model. The random forest model performed better than linear regression model thus I will be using it in the next steps.
+
+## Choosing Observation
+```{r}
+observation <- test[13, ]
+observation
+```
+# 1. Model Prediction for Observation
+
+```{r}
+p <- predict(ranger_model, observation)
+p$predictions
+observation$charges
+```
+The prediction made by the model is not the most acurate. Relative approximation error is equal to 0.22.
+
+```{r}
+(p$predictions - observation$charges)/observation$charges
+```
+
+
+# 2. Break Down
+
+```{r}
+explainer_rf <- DALEX::explain(ranger_model, 
+                               data = test[,-7],  
+                               y = test$charges)
+```
+
+```{r}
+bd_pr <- predict_parts(explainer = explainer_rf,
+                       new_observation = observation,
+                       type = "break_down")
+
+plot(bd_pr)
+```
+
+According to the Break Down model variables smoker and age have the biggest impact on the predicted value. Value "no" of variable smoker decreases predicted value. Variable age equal to 53 increases predicted value.
+
+# 3. Shapley Values
+
+```{r}
+shap_pr <- predict_parts(explainer = explainer_rf,
+                         new_observation = observation,
+                         type = "shap")
+
+plot(shap_pr)
+```
+
+Age and smoker variables both have the most effect on prediction, which also was visible on Break Down plot. According to Shapley value plot age variable is more important than smoker variable. For the Break Down plot the reverse is true. Bmi variable on average has more contribution to prediction than Break Down Profile sugests. Region and sex variable have the least importance for the model.
+
+# 4. Effects of Different Variable Values
+
+```{r}
+observation2 <- test %>% 
+  filter(smoker == "yes") %>% 
+  filter(age < 30) %>% 
+  filter(bmi == 28.5)
+observation2
+```
+```{r}
+p2 <- predict(ranger_model, observation2)
+p2$predictions
+```
+```{r}
+observation2$charges
+```
+
+```{r}
+abs(p2$predictions - observation2$charges)/observation2$charges
+```
+
+Prediction for observation 2 is quite inaccurate, relative approximation error is equal to 0.75.
+
+```{r}
+bd_pr2 <- predict_parts(explainer = explainer_rf,
+                       new_observation = observation2,
+                       type = "break_down")
+
+plot(bd_pr2)
+```
+```{r}
+shap_pr2 <- predict_parts(explainer = explainer_rf,
+                         new_observation = observation2,
+                         type = "shap")
+
+plot(shap_pr2)
+```
+
+# 5. Analysis
+
+According to Shapley values plot for observation nr 1 age variable and smoker variable are the most important for creating prediction. Age increases prediction and smoker decreases it. Both variables have noticeable higher effect on prediction than the remaining ones. Similar relationship between variables can be spotted for observation nr 2. Age variable and smoker variable are the most important ones, however the variable with the highest contribution is different. For observation 1 it is age variable and for observation 2 it is smoker variable.
+
+Observation 1 and observation 2 have different values on those two variables. Smoker variable has value “no” for the first observation and “yes” for the second observation. However, in both of those cases the smoker variable has negative contribution to prediction. It could be reason for large difference in predicted value and observed value for observation 2. 
+
+Observations differ on second variable. Person from first observation is 53 years old and is nearly twice the age of person from second observation how is 27 years old. In this case the difference is visible in shapley values for observations. Age variable increases prediction for observation nr 1 and decreases it for observation nr 2.
+
+The next two variables with medium effects on prediction are childer and bmi. For both of observations different variable from those are more important. For first observation childer variable is more important, and for second it is bmi. The bmi values are similar in both cases and are equal 28.1 and 28.5 for first and second observation. Their Shapley values are negative. Children variable is different, and it is equal to 3 for observation 1 and 0 for observation 2. For the first observation Shapley value for variable childer for first observation is positive and for second observation is negative.
+
+Region variable and sex variable for both observation have the smallest value. In both cases shapley value for region variable is a bit bigger than for sex variable. Both variables have different values for each observation, however in every case the contribution to the prediction is positive.
+
+
+# Conclusions
+
+For both observation 1 and observation 2 age variable and smoker variable have the highest effect on prediction, and region variable and sex variable have the lowest effect. There are variables such as smoker that for different values have similar effects on predictions, and variables such as age that for different values have negative or positive shapley values. Bmi variable that was very similar for both observation in had similar effect on the prediction.
