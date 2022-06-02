@@ -1,0 +1,101 @@
+---
+title: "WB_HW2"
+output: html_document
+date: '2022-05-17'
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+```{r cars}
+library(DALEX)
+library(caret)
+set.seed(2137)
+
+data <- read.csv("insurance.csv")
+data$sex <- as.factor(data$sex)
+data$smoker <- as.factor(data$smoker)
+data$region <- as.factor(data$region)
+head(data)
+```
+Now, let's split the data into training and test datasets.
+```{r}
+set.seed(11)
+index <- createDataPartition(apartments$m2.price, p = 0.5, list = FALSE)
+
+train <- data[index,]
+test  <- data[-index,]
+
+x_train <- train[,-c(7)]
+y_train <- train[, 7]
+
+x_test <- test[,-c(7)]
+y_test <- test[, 7]
+```
+
+After splitting the data, we can train the models.
+```{r}
+library(ranger)
+library(gbm)
+
+forest <- ranger(charges~., data=train)
+y_pred <- predict(forest, x_test)
+print(y_pred$predictions[50])
+print(y_test[50])
+
+lr_model <- lm(charges~., data = train)
+pred_lr <- predict(lr_model, test)
+print(pred_lr[50])
+
+gbm_model <- gbm(charges~., data = train, distribution = "gaussian")
+y_gbm <- predict(gbm_model, x_test)
+print(y_gbm[50])
+```
+Lets's create explainers:
+```{r}
+explainer_rf <- DALEX::explain(forest, 
+                               data = x_test,  
+                               y = y_test,
+                               label = "random forest")
+
+explainer_lr <- DALEX::explain(lr_model, 
+                               data = x_test,  
+                               y = y_test,
+                               label = "linear regression")
+
+explainer_gbm <- DALEX::explain(gbm_model, 
+                               data = x_test,  
+                               y = y_test,
+                               label = "GBM model")
+```
+Let's create CP profiles for the 152th observation
+```{r}
+cp_pr <- predict_profile(explainer = explainer_rf,
+                         new_observation = x_test[152,])
+plot(cp_pr)
+plot(cp_pr, variables = c("sex", "smoker", "region"), variable_type = "categorical", 
+     categorical_type = "bars") 
+
+cp_lr <- predict_profile(explainer = explainer_lr,
+                         new_observation = x_test[152,])
+plot(cp_lr)
+plot(cp_lr, variables = c("sex", "smoker", "region"), variable_type = "categorical", 
+     categorical_type = "bars") 
+
+cp_gbm <- predict_profile(explainer = explainer_gbm,
+                         new_observation = x_test[152,])
+plot(cp_gbm)
+plot(cp_gbm, variables = c("sex", "smoker", "region"), variable_type = "categorical", 
+     categorical_type = "bars") 
+```
+All models suggest that the higher is age, the prediction is higher. However, the random forest curve has ups and dows and gbm curve looks a bit like steps and is almost never decreasing.
+
+As for BMI, the models aren't compatible either. The random forest curve first increases, than decreases and again increases. The gbm curve first increases and suddenly becomes constant.
+
+The number of children is almost linear in gbm model and doesn't seem to have big influence on the predictioon.
+
+All models claim that region and female variables don't have bigger influence. However the positive value in smoker variable strongly increases the prediction
