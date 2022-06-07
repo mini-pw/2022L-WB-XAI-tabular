@@ -1,0 +1,106 @@
+---
+title: "Homework1-XAI2022-Pawel-Fijalkowski"
+author: "Paweł Fijałkowski"
+date: '2022-03-30'
+output:
+  html_document:
+    df_print: paged
+---
+
+
+## Initial:
+
+
+As the package was removed from CRAN, we needed to download it directly from GitHub (using Rstudio Cloud, as it only worked *somehow*).
+
+```{r, load_data, message=FALSE}
+EPL_2021 <- read.csv("EPL_2021.csv")
+head(EPL_2021)
+```
+
+Each row in the data set is a shot attempt. Provided features ("league", "shotType", "home_team", "away_team", ...)
+are supposed to help us in predicting "xG" value which essentially is a probability that this attempt will end up with a 
+positive result (a goal).
+
+Here we select features that are important in the context of our problem and do proper transformations ((X,Y) -> (distance, angle))
+```{r, message=FALSE}
+library(dplyr)
+data <- EPL_2021 %>% select(result, X, Y, xG, h_a, situation, shotType, home_goals, away_goals, lastAction) %>%
+                 mutate(status = ifelse(result == "Goal", "1", "0")) %>%
+                 mutate(distanceToGoal = sqrt((105 - (X * 105)) ^ 2 + (32.5 - (Y * 68)) ^ 2)) %>%
+                 mutate(angleToGoal = abs(atan((7.32 * (105 - (X * 105))) / ((105 - (X * 105))^2 + 
+                (32.5 - (Y * 68)) ^ 2 - (7.32 / 2) ^ 2)) * 180 / pi)) %>%
+                 select(-X, -Y, -result)
+```
+
+
+## Models:
+
+We will be predicting probability of scoring a goal (status) for each shot attempt.
+
+```{r, message=FALSE}
+library(DALEX)
+library(DALEXtra)
+library(ranger)
+```
+
+
+```{r, train_model, message = FALSE}
+data_processed <- data  %>% mutate(h_a = as.factor(h_a),
+                                        situation = as.factor(situation),
+                                        shotType = as.factor(shotType),
+                                        lastAction = as.factor(lastAction),
+                                        status = as.numeric(status))
+
+model <- ranger::ranger(status ~., data = data_processed, classification = TRUE, probability = TRUE)
+```
+## Explanations
+
+#### Making prediction:
+
+```{r obs40}
+obs40 <- data_processed[40, !(colnames(data_processed) %in% c("status"))]
+predict_40 <- predict(model, obs40)
+ifelse(predict_40$predictions[2] <= 0.5, 0, 1)
+data_processed[12, "status"]
+```
+
+Model correctly predicted that attempt #40 will not end up with the goal. 
+
+Let's create explainer!
+```{r, explainer}
+explainer <- explain(model, data = data_processed, y = as.numeric(data_processed$status))
+```
+
+Break Down for observation #40
+
+```{r predict_parts40}
+plot(predict_parts(explainer = explainer, new_observation = obs40))
+```
+
+The angle to the goal contributes heavily negatively to the result (scoring goal). 
+
+Shap on observation 40
+
+```{r shap40}
+plot(predict_parts(explainer = explainer, new_observation = obs40, type = 'shap', B = 4))
+```
+
+We clearly see that low quality of the attempt (xG) and angleToGoal contributed negatively.
+
+We will find 2 observations in which the same feature have different effect.
+
+```{r 37}
+obs37 <- data_processed[37, !(colnames(data_processed) %in% c("status"))]
+plot(predict_parts(explainer = explainer, new_observation = obs37))
+```
+
+```{r 120}
+obs120 <- data_processed[120, !(colnames(data_processed) %in% c("status"))]
+plot(predict_parts(explainer = explainer, new_observation = obs120))
+```
+
+As we can see "xG" value can contribute negatively(120) or positively(37) to the status variable.
+
+
+
