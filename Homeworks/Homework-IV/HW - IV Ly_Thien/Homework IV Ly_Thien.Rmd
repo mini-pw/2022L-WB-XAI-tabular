@@ -1,0 +1,163 @@
+---
+title: "XAI Case Studies 2022L - Homework 4"
+author: "Hoang Thien Ly"
+date: "7/2/2022"
+output: html_document
+---
+
+<br>
+
+![](https://i.pinimg.com/736x/9b/ce/b8/9bceb8d6b026d592bb976c01add2ec04.jpg){width=25%}
+
+<br>
+
+
+## Loading dataset & data preparation:
+
+
+The dataset taken from 2021 for EPL league
+
+```{r, load_data, message=FALSE}
+EPL_2021 <- read.csv("C:/Users/DELL/OneDrive/Desktop/Homework XAI Course/EPL_2021.csv")
+head(EPL_2021)
+```
+
+
+
+We transform the coordinates X and Y into distance to Goal and angle to Goal
+```{r, transform_data, message=FALSE}
+library(dplyr)
+EPL_2021 <- EPL_2021 %>% select(result, X, Y, xG, h_a, situation, shotType, home_goals, away_goals, lastAction) %>%
+                 mutate(status = ifelse(result == "Goal", "1", "0")) %>%
+                 mutate(distanceToGoal = sqrt((105 - (X * 105)) ^ 2 + (32.5 - (Y * 68)) ^ 2)) %>%
+                 mutate(angleToGoal = abs(atan((7.32 * (105 - (X * 105))) / ((105 - (X * 105))^2 + 
+                (32.5 - (Y * 68)) ^ 2 - (7.32 / 2) ^ 2)) * 180 / pi)) %>%
+                 select(-X, -Y, -result)
+```
+
+
+
+
+## Preparing models:
+```{r, import libraries , message=FALSE}
+library(e1071) # SVM
+library(ranger) # for randomForest
+library(DALEX)
+library(DALEXtra)
+```
+
+Choosing extracting target column and remove that from training data
+
+```{r, train_model, message = FALSE}
+library(caret)
+xG_col <- EPL_2021 %>% select(xG)
+df_1 <- EPL_2021 %>% select(-xG) %>% mutate(h_a = as.factor(h_a),
+                                        situation = as.factor(situation),
+                                        shotType = as.factor(shotType),
+                                        lastAction = as.factor(lastAction),
+                                        status = as.numeric(status))
+c_target <- df_1 %>% select(status)
+df_1 <- df_1 %>% select(-status)
+dummy <- dummyVars(" ~.", data=df_1)
+newdata <- cbind(data.frame(predict(dummy, newdata = df_1)),c_target)
+```
+
+```{r, split_data, message = FALSE}
+## 70% of the sample size
+smp_size <- floor(0.7 * nrow(newdata))
+
+## set the seed to make your partition reproducible
+set.seed(123)
+train_ind <- sample(seq_len(nrow(newdata)), size = smp_size)
+
+data_train <- newdata[train_ind, ]
+data_test <- newdata[-train_ind, ]
+X_test <- data_test[ ,-ncol(data_test)]
+y_test <- data_test[ ,ncol(data_test)]
+```
+
+
+```{r, creating_models, message = FALSE, warning = FALSE}
+# Random Forest
+forest <- ranger::ranger(status~., data = data_train, classification = TRUE, probability = TRUE)
+
+# SVM:
+SVM <- svm(status ~., data = data_train)
+
+# GLM model:
+glm_model <- glm(status~., data = data_train, family = binomial())
+```
+
+
+<br>
+
+
+
+
+
+## Homework
+
+#### Assessing the best model:
+```{r, model_selection, message=FALSE, warning = FALSE}
+y_ranger <- ifelse(predict(forest, data = X_test)$prediction[,2]<=0.5,0,1)
+y_svm    <- ifelse(predict(SVM, X_test)<=0.5,0,1)
+y_glm    <- ifelse(predict(glm_model, X_test, type = 'response')<=0.5, 0, 1)
+
+#calculate AUC
+library(cvAUC)
+cat("auc of ranger model: ", AUC(y_test, y_ranger))
+cat("auc of SVM model: ",   AUC(y_test, y_svm))
+cat("auc of glm model: ",   AUC(y_test, y_glm))
+```
+
+According to metric AUC, ranger model is performing better than SVM and GLM.
+
+
+#### Making prediction:
+Making prediction for the 1-st observation in data_test:
+```{r prediction12}
+obs <- X_test[1, ]
+predict_1 <- predict(forest, obs)
+cat("Model predict: class ", ifelse(predict_1$predictions[2]<=0.5,0,1))
+```
+
+
+#### Permutation-based variables importance:
+
+Making explainer:
+```{r}
+explainer_rf <- DALEX::explain(forest,
+                               data = X_test[1:500,],
+                               y = y_test[1:500],
+                               label = 'random forest')
+
+explainer_svm <- DALEX::explain(SVM, 
+                                data = X_test[1:500,],
+                                y =  y_test[1:500],
+                                label = 'SVM'
+                                )
+
+explainer_glm <- DALEX::explain(glm_model, 
+                                data = X_test[1:500,],
+                                y =  y_test[1:500],
+                                label = 'GLM'
+                                )
+```
+
+
+We compute CP profiles for an single observation
+```{r, warning= FALSE, message=FALSE}
+mp_rf <- model_parts(explainer_rf, N = 100)
+mp_svm <- model_parts(explainer_svm, N = 100)
+mp_glm <- model_parts(explainer_glm, N = 100)
+
+# Three plots of permutation-based variable importance with 3 models:
+plot(mp_rf)
+plot(mp_svm)
+plot(mp_glm)
+```
+
+
+## Conclusion
+Different model took into consideration different features to be important ones. With the highest performance of AUC on datatest, Random Forest shows home_goals and away_goals are the most 2 vital features for making those predictions.
+While, SVM suggests angleToGoal and distanceToGoal should be prioritized to be at very first lines on the FE important ranking list. Meanwhile, GLM proposes angleToGoal and distanceToGoal are 3-rd and 4-th important features in GLM base on permutational FE method.
