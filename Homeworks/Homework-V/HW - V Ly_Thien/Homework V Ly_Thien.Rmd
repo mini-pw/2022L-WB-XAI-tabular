@@ -1,0 +1,159 @@
+---
+title: "XAI Case Studies 2022L - Homework 5"
+author: "Hoang Thien Ly"
+date: "7/2/2022"
+output: html_document
+---
+
+<br>
+
+![](https://i.pinimg.com/736x/9b/ce/b8/9bceb8d6b026d592bb976c01add2ec04.jpg){width=25%}
+
+<br>
+
+
+## Loading dataset & data preparation:
+
+
+The dataset taken from 2021 for EPL league
+
+```{r, load_data, message=FALSE}
+EPL_2021 <- read.csv("C:/Users/DELL/OneDrive/Desktop/Homework XAI Course/EPL_2021.csv")
+head(EPL_2021)
+```
+
+
+
+We transform the coordinates X and Y into distance to Goal and angle to Goal
+```{r, transform_data, message=FALSE}
+library(dplyr)
+EPL_2021 <- EPL_2021 %>% select(result, X, Y, xG, h_a, situation, shotType, home_goals, away_goals, lastAction) %>%
+                 mutate(status = ifelse(result == "Goal", "1", "0")) %>%
+                 mutate(distanceToGoal = sqrt((105 - (X * 105)) ^ 2 + (32.5 - (Y * 68)) ^ 2)) %>%
+                 mutate(angleToGoal = abs(atan((7.32 * (105 - (X * 105))) / ((105 - (X * 105))^2 + 
+                (32.5 - (Y * 68)) ^ 2 - (7.32 / 2) ^ 2)) * 180 / pi)) %>%
+                 select(-X, -Y, -result)
+```
+
+
+
+
+## Preparing models:
+```{r, import libraries , message=FALSE}
+library(e1071) # SVM
+library(ranger) # for randomForest
+library(DALEX)
+library(DALEXtra)
+```
+
+Choosing extracting target column and remove that from training data
+
+```{r, train_model, message = FALSE}
+library(caret)
+xG_col <- EPL_2021 %>% select(xG)
+df_1 <- EPL_2021 %>% select(-xG) %>% mutate(h_a = as.factor(h_a),
+                                        situation = as.factor(situation),
+                                        shotType = as.factor(shotType),
+                                        lastAction = as.factor(lastAction),
+                                        status = as.numeric(status))
+c_target <- df_1 %>% select(status)
+df_1 <- df_1 %>% select(-status)
+dummy <- dummyVars(" ~.", data=df_1)
+newdata <- cbind(data.frame(predict(dummy, newdata = df_1)),c_target)
+```
+
+```{r, split_data, message = FALSE}
+## 70% of the sample size
+smp_size <- floor(0.7 * nrow(newdata))
+
+## set the seed to make your partition reproducible
+set.seed(123)
+train_ind <- sample(seq_len(nrow(newdata)), size = smp_size)
+
+data_train <- newdata[train_ind, ]
+data_test <- newdata[-train_ind, ]
+X_test <- data_test[ ,-ncol(data_test)]
+y_test <- data_test[ ,ncol(data_test)]
+```
+
+
+```{r, creating_models, message = FALSE, warning = FALSE}
+# Random Forest
+forest <- ranger::ranger(status~., data = data_train, classification = TRUE, probability = TRUE)
+
+# SVM:
+SVM <- svm(status ~., data = data_train)
+
+# GLM model:
+glm_model <- glm(status~., data = data_train, family = binomial())
+```
+
+
+<br>
+
+
+
+
+
+## Homework
+
+#### Calculate Partial Dependence Profiles (PDP)
+
+Making explainer:
+```{r}
+explainer_rf <- DALEX::explain(forest,
+                               data = X_test[1:500,],
+                               y = y_test[1:500],
+                               label = 'random forest')
+
+explainer_svm <- DALEX::explain(SVM, 
+                                data = X_test[1:500,],
+                                y =  y_test[1:500],
+                                label = 'SVM'
+                                )
+
+explainer_glm <- DALEX::explain(glm_model, 
+                                data = X_test[1:500,],
+                                y =  y_test[1:500],
+                                label = 'GLM'
+                                )
+```
+
+
+We compute PDP profiles for 3 models respect to distancetoGoal
+```{r, warning= FALSE, message=FALSE}
+pdp_rf  <- model_profile(explainer_rf, variables = "distanceToGoal")
+pdp_svm <- model_profile(explainer_svm, variables = "distanceToGoal")
+pdp_glm <- model_profile(explainer_glm, variables = "distanceToGoal")
+
+# plot 3 pdp profiles
+plot(pdp_rf, pdp_svm, pdp_glm)
+```
+
+Conclusion for PDP Profile: those three models have different perspectives and predict different values in "sub-regions" of data. Model GLM is quite smooth, and totally pessimistic when the distance to goal more than 50m, probability of scoring reaches to 0. Otherwise, GLM could not be usable, since it's counter-intuitive that when distance to goal increases, higher probability of scoring will be (unrealistic).
+
+Meanwhile, random forest votes unchanged when distance to goal mouth greater than 27m. In general, those 
+
+####  Accumulated Local Edpendences
+```{r, message= FALSE, warning=FALSE}
+pdp_rf_ale <- model_profile(explainer = explainer_rf, 
+                            variables = "distanceToGoal",
+                            type = "accumulated")
+
+pdp_svm_ale <- model_profile(explainer = explainer_svm, 
+                            variables = "distanceToGoal",
+                            type = "accumulated")
+
+pdp_glm_ale <- model_profile(explainer = explainer_glm, 
+                            variables = "distanceToGoal",
+                            type = "accumulated")
+
+plot(pdp_rf_ale, pdp_svm_ale, pdp_glm_ale)
+
+```
+
+
+ALE profiles look almost the same as in the case of PDP profile. But with greater distanceToGoal, SVM has a tendency to have average probability of scoring lower than in PDP profiles.
+
+
+
