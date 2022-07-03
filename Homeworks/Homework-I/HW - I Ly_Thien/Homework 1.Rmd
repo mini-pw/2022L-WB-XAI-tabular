@@ -1,0 +1,164 @@
+---
+title: "XAI Case Studies 2022L - Homework 1"
+subtitle: "Hoang Thien Ly"
+output:
+  html_document:
+    df_print: paged
+---
+
+<br>
+
+![](https://i.pinimg.com/736x/9b/ce/b8/9bceb8d6b026d592bb976c01add2ec04.jpg){width=25%}
+
+<br>
+
+
+## Loading dataset & data preparation:
+
+
+Package {worldfootballr} was removed from CRAN. So it's quite enigmatic to install the package, even directly from Github page (it crashed). So the solution I used is to run remotely on RStudio Cloud, then export the csv form of dataset (by scraping dataset from https://understat.com/). Miraculously it worked! Below is the dataset taken from 2021 for EPL league
+
+```{r, load_data, message=FALSE}
+EPL_2021 <- read.csv("C:/Users/DELL/OneDrive/Desktop/EPL_2021.csv")
+head(EPL_2021)
+```
+
+As we can see, the names of features are quite clear. Target is column "xG". "xG"- expected goals is an alternative solution to overcome the pitfalls of aggregating number of shot attempts neglecting quality of each shot.
+
+In brief, value of xG ranges between zero and one to each shot which represents the probability that the shot will result in a goal.
+
+From our dataset, some features are obviously indespensable: X, Y (coordinate of the shot), shotType (body part used to take the shot), home_goals and away_goals (to give a brief overview of the player's ability) and result (Goal/Missed Shots/...)
+
+The remained features, better to be removed, to accelerate running times of built models (league: only one league EPL, id of the shot - brings no new info, minute - in reality, soccer players are often substituted during the game, player - no need, since more or less, performance of soccer players is stored in home_goals & away_goals, match_id: no repetition in the future data, meaningless for models, date, player_assited - we don't have info about that player)
+
+
+We transform the coordinates X and Y into distance to Goal and angle to Goal
+```{r, transform_data, message=FALSE}
+library(dplyr)
+df_1 <- EPL_2021 %>% select(result, X, Y, xG, h_a, situation, shotType, home_goals, away_goals, lastAction) %>%
+                 mutate(status = ifelse(result == "Goal", "1", "0")) %>%
+                 mutate(distanceToGoal = sqrt((105 - (X * 105)) ^ 2 + (32.5 - (Y * 68)) ^ 2)) %>%
+                 mutate(angleToGoal = abs(atan((7.32 * (105 - (X * 105))) / ((105 - (X * 105))^2 + 
+                (32.5 - (Y * 68)) ^ 2 - (7.32 / 2) ^ 2)) * 180 / pi)) %>%
+                 select(-X, -Y, -result)
+```
+
+
+
+## Exploratory Data Analysis:
+```{r, autoEDA,message=FALSE}
+library(autoEDA)
+autoEDA::autoEDA(df_1)
+```
+
+Values of xG receive pretty low (most range from 0.01 to 0.15). Almost 70% of shot attempts are performed from OPENPLay. Over half of observations, rightfoot was used to take the shot. Target column (status) is imbalanced. Distribution of distance to goal and angle to goal seems to be a mixture model.
+  
+
+<br>
+
+
+
+## Preparing models:
+
+Our task is to create a classification model to predict, whether a shot attempt is "Goal" or not (based on target feature status).
+
+
+```{r, import libraries , message=FALSE}
+library(ranger)
+library(DALEX)
+library(DALEXtra)
+```
+
+Choosing extracting target column and remove that from training data
+
+```{r, train_model, message = FALSE}
+xG_col <- df_1 %>% select(xG)
+
+df_1 <- df_1 %>% select(-xG) %>% mutate(h_a = as.factor(h_a),
+                                        situation = as.factor(situation),
+                                        shotType = as.factor(shotType),
+                                        lastAction = as.factor(lastAction),
+                                        status = as.numeric(status))
+c_target <- df_1 %>% select(status)
+df_1 <- df_1 %>% select(-status)
+
+library(caret)
+dummy <- dummyVars(" ~.", data=df_1)
+newdata <- cbind(data.frame(predict(dummy, newdata = df_1)),c_target)
+model <- ranger::ranger(status ~., data = newdata, classification = TRUE, probability = TRUE)
+```
+
+We need to be cautious since dataset was not split into train and test.
+
+<br>
+## Homework
+
+#### Making prediction:
+We are about making prediction for the 12-th observation in dataset:
+```{r prediction12}
+new_obs <- newdata[12, !(colnames(newdata) %in% c("status"))]
+predict_12 <- predict(model, new_obs)
+print(ifelse(predict_12$predictions[2]<=0.5,0,1))
+value_12 <- newdata[12, "status"]
+print(value_12)
+```
+
+Our ranger model returned with probability `r predict_12$predictions[2]` for observation 12-th.
+
+
+#### Explain model
+
+Create explainer wrapper:
+```{r, explainer}
+explainer <- explain(model, data = newdata, y = as.numeric(newdata$status), label = 'ranger model')
+```
+<br>
+
+"Break Down for selected observation"
+We use `predict_parts` to explain what contribute to the outcome of prediction for obs 12-th:
+
+```{r predict_parts12_1}
+bdown<- predict_parts(explainer = explainer, new_observation = new_obs)
+plot(bdown)
+```
+
+The distance to the goal mouth contributes mostly for the failure of goal attempt for observation number 12-th.
+
+<br>
+"Shap & interation between features"
+
+```{r predict_parts12_shap_}
+shap <- predict_parts(explainer = explainer, new_observation = new_obs, type = 'shap', B = 5)
+plot(shap)
+```
+
+Biggest influence on prediction: angleToGoal and away_goals.
+
+
+<br>
+```{r}
+heatmap(as.matrix(newdata[, !(colnames(newdata) %in% c("status"))]))
+```
+
+
+
+<br>
+
+"Different effects"
+
+Breakdown plot for observation no.12
+```{r predict_parts12}
+bdown<- predict_parts(explainer = explainer, new_observation = new_obs)
+plot(bdown)
+```
+
+Breakdown plot for observation no.123
+```{r predict_parts123}
+bdown123 <- predict_parts(explainer = explainer, new_observation = newdata[123, !(colnames(newdata) %in% c("status"))])
+plot(bdown123)
+```
+
+As we can see, variable distance to Goal, depending on its value, may contribute positively or negatively to our prediction.
+
+
+

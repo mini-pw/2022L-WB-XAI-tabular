@@ -1,0 +1,146 @@
+---
+title: "XAI Case Studies 2022L - Homework 3"
+author: "Hoang Thien Ly"
+date: "7/2/2022"
+output: html_document
+---
+
+<br>
+
+![](https://i.pinimg.com/736x/9b/ce/b8/9bceb8d6b026d592bb976c01add2ec04.jpg){width=25%}
+
+<br>
+
+
+## Loading dataset & data preparation:
+
+
+The dataset taken from 2021 for EPL league
+
+```{r, load_data, message=FALSE}
+EPL_2021 <- read.csv("C:/Users/DELL/OneDrive/Desktop/Homework XAI Course/EPL_2021.csv")
+head(EPL_2021)
+```
+
+
+
+We transform the coordinates X and Y into distance to Goal and angle to Goal
+```{r, transform_data, message=FALSE}
+library(dplyr)
+EPL_2021 <- EPL_2021 %>% select(result, X, Y, xG, h_a, situation, shotType, home_goals, away_goals, lastAction) %>%
+                 mutate(status = ifelse(result == "Goal", "1", "0")) %>%
+                 mutate(distanceToGoal = sqrt((105 - (X * 105)) ^ 2 + (32.5 - (Y * 68)) ^ 2)) %>%
+                 mutate(angleToGoal = abs(atan((7.32 * (105 - (X * 105))) / ((105 - (X * 105))^2 + 
+                (32.5 - (Y * 68)) ^ 2 - (7.32 / 2) ^ 2)) * 180 / pi)) %>%
+                 select(-X, -Y, -result)
+```
+
+
+
+
+## Preparing models:
+```{r, import libraries , message=FALSE}
+library(e1071) # SVM
+library(ranger) # for randomForest
+library(DALEX)
+library(DALEXtra)
+```
+
+Choosing extracting target column and remove that from training data
+
+```{r, train_model, message = FALSE}
+library(caret)
+xG_col <- EPL_2021 %>% select(xG)
+df_1 <- EPL_2021 %>% select(-xG) %>% mutate(h_a = as.factor(h_a),
+                                        situation = as.factor(situation),
+                                        shotType = as.factor(shotType),
+                                        lastAction = as.factor(lastAction),
+                                        status = as.numeric(status))
+c_target <- df_1 %>% select(status)
+df_1 <- df_1 %>% select(-status)
+dummy <- dummyVars(" ~.", data=df_1)
+newdata <- cbind(data.frame(predict(dummy, newdata = df_1)),c_target)
+```
+
+```{r, split_data, message = FALSE}
+## 70% of the sample size
+smp_size <- floor(0.7 * nrow(newdata))
+
+## set the seed to make your partition reproducible
+set.seed(123)
+train_ind <- sample(seq_len(nrow(newdata)), size = smp_size)
+
+data_train <- newdata[train_ind, ]
+data_test <- newdata[-train_ind, ]
+X_test <- data_test[ ,-ncol(data_test)]
+y_test <- data_test[ ,ncol(data_test)]
+```
+
+
+```{r, creating_models, message = FALSE, warning = FALSE}
+# Random Forest
+forest <- ranger::ranger(status~., data = data_train, classification = TRUE, probability = TRUE)
+
+# SVM:
+SVM <- svm(status ~., data = data_train)
+
+# GLM model:
+glm_model <- glm(status~., data = data_train, family = binomial())
+```
+
+<br>
+
+
+
+
+
+## Homework
+
+#### Assessing the best model:
+```{r, model_selection, message=FALSE, warning = FALSE}
+y_ranger <- ifelse(predict(forest, data = X_test)$prediction[,2]<=0.5,0,1)
+y_svm    <- ifelse(predict(SVM, X_test)<=0.5,0,1)
+y_glm    <- ifelse(predict(glm_model, X_test, type = 'response')<=0.5, 0, 1)
+
+#calculate AUC
+library(cvAUC)
+cat("auc of ranger model: ", AUC(y_test, y_ranger))
+cat("auc of SVM model: ",   AUC(y_test, y_svm))
+cat("auc of glm model: ",   AUC(y_test, y_glm))
+```
+
+According to metric AUC, ranger model is performing better than SVM and GLM.
+
+
+#### Making prediction:
+Making prediction for the 1-st observation in data_test:
+```{r prediction12}
+obs <- X_test[1, ]
+predict_1 <- predict(forest, obs)
+cat("Model predict: class ", ifelse(predict_1$predictions[2]<=0.5,0,1))
+```
+
+
+#### Ceteris Paribus profiles:
+
+Making explainer:
+```{r}
+explainer_rf <- DALEX::explain(forest,
+                               data = X_test,
+                               y = y_test,
+                               label = 'random forest')
+```
+
+
+We compute CP profiles for an single observation
+```{r, warning= FALSE, message=FALSE}
+cp_pr <- predict_profile(explainer = explainer_rf,
+                         new_observation = X_test[1, ])
+
+# We consider only 2 variables to plot CP profile
+plot(cp_pr, variables = c("distanceToGoal", "angleToGoal"))
+```
+
+
+## Conclusion
+CP profile returns rational reasons for prediction. When we fixed values of other features, the closer distance to Goal is (close to 0), the higher probability players will goal. Which angle to goal, closer to 90 degree, higher probability player will score.
